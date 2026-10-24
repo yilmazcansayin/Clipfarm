@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clipfarm</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b36; --text: #e8eaf0; --muted: #8b93a7;
+    --accent: #ff3b5c; --ok: #2ecc71; --warn: #f5a623; --err: #ff5d5d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; }
+  .pill { padding: 3px 9px; border-radius: 99px; font-size: 12px; background: var(--line); color: var(--muted); }
+  .pill.on { background: rgba(46, 204, 113, .15); color: var(--ok); }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+  form.new { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 8px; background: var(--panel); padding: 14px; border-radius: 12px; border: 1px solid var(--line); }
+  input, select, textarea, button { font: inherit; color: inherit; background: #0c0e12; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  textarea { width: 100%; resize: vertical; }
+  button { cursor: pointer; background: var(--line); border: none; }
+  button.primary { background: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .opts { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 13px; align-items: center; }
+  .job { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .job-head { padding: 12px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; cursor: pointer; }
+  .job-head .title { font-weight: 600; flex: 1; min-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--line); }
+  .status.ready, .status.uploaded { color: var(--ok); }
+  .status.failed { color: var(--err); }
+  .status.analyzing, .status.rendering, .status.uploading, .status.queued { color: var(--warn); }
+  .log { font: 12px ui-monospace, monospace; color: var(--muted); padding: 0 14px 10px; white-space: pre-wrap; }
+  .clips { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 0 14px 14px; }
+  .clip { background: #0c0e12; border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .clip video { width: 100%; aspect-ratio: 9 / 16; background: #000; border-radius: 8px; }
+  .clip .ph { width: 100%; aspect-ratio: 9 / 16; border-radius: 8px; background: #000; display: grid; place-items: center; color: var(--muted); }
+  .clip label { font-size: 12px; color: var(--muted); }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .meta { font-size: 12px; color: var(--muted); }
+  .err { color: var(--err); font-size: 12px; }
+  a { color: #7fb2ff; }
+  @media (max-width: 700px) { form.new { grid-template-columns: 1fr 1fr; } form.new input[name=url] { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎬 Clipfarm</h1>
+  <span id="st-claude" class="pill">Claude</span>
+  <span id="st-yt" class="pill">YouTube</span>
+  <span style="flex:1"></span>
+  <a href="https://studio.youtube.com" target="_blank" rel="noopener">YouTube Studio ↗</a>
+</header>
+<main>
+  <form class="new" id="newJob">
+    <input name="url" placeholder="Yayın / VOD / klip adresi (YouTube, Twitch, Kick)" required>
+    <select name="count" title="Kaç klip">
+      <option value="3">3 klip</option><option value="5" selected>5 klip</option><option value="8">8 klip</option><option value="12">12 klip</option>
+    </select>
+    <select name="layout" title="Dikey düzen">
+      <option value="blur">Bulanık arka plan</option><option value="crop">Kırp</option><option value="split">Kamera + oyun</option>
+    </select>
+    <input name="cam" placeholder="kamera x,y,w,h" title="Kamera + oyun düzeni için kamera alanı (0-1 oranları)" style="width:140px">
+    <button class="primary">Klip üret</button>
+    <div class="opts">
+      <label><input type="checkbox" name="upload"> Hazır olunca YouTube'a otomatik yükle</label>
+      <label>Görünürlük <select name="privacy"><option value="private">Özel</option><option value="unlisted">Liste dışı</option><option value="public">Herkese açık</option></select></label>
+    </div>
+  </form>
+  <div id="jobs"></div>
+</main>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const expanded = new Set(JSON.parse(sessionStorage.getItem("open") || "[]"));
+const editing = new Set();
+const STATUS = { queued: "sırada", analyzing: "analiz", rendering: "üretiliyor", ready: "hazır", failed: "hata", planned: "planlandı", uploading: "yükleniyor", uploaded: "yüklendi" };
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+
+async function status() {
+  try {
+    const s = await api("/api/status");
+    $("#st-claude").className = "pill" + (s.claude ? " on" : "");
+    $("#st-claude").textContent = s.claude ? "Claude açık" : "Claude kapalı";
+    $("#st-yt").className = "pill" + (s.youtube ? " on" : "");
+    $("#st-yt").textContent = s.youtube ? "YouTube bağlı" : "YouTube bağlı değil";
+  } catch (e) {}
+}
+
+function clipCard(job, c) {
+  const busy = ["rendering", "uploading"].includes(c.status) || ["analyzing", "rendering", "queued"].includes(job.status);
+  const video = c.media && c.status !== "rendering"
+    ? `<video src="${c.media}?v=${encodeURIComponent(c.status + c.hook)}" controls preload="metadata" playsinline></video>`
+    : `<div class="ph">${esc(STATUS[c.status] || c.status)}…</div>`;
+  return `<div class="clip" data-job="${job.id}" data-clip="${c.id}">
+    ${video}
+    <div class="row"><span class="status ${c.status}">${esc(STATUS[c.status] || c.status)}</span>
+      <span class="meta">${Math.round(c.end - c.start)} sn · ${fmt(c.start)}${c.virality ? " · viral " + c.virality + "/10" : ""}</span></div>
+    ${c.reason ? `<div class="meta">${esc(c.reason)}</div>` : ""}
+    <label>Ekrandaki başlık (hook)</label><input name="hook" value="${esc(c.hook)}" ${busy ? "disabled" : ""}>
+    <label>YouTube başlığı</label><input name="title" value="${esc(c.title)}" maxlength="100" ${busy ? "disabled" : ""}>
+    <label>Açıklama</label><textarea name="description" rows="3" ${busy ? "disabled" : ""}>${esc(c.description)}</textarea>
+    <label>Etiketler (virgülle)</label><input name="tags" value="${esc((c.tags || []).join(", "))}" ${busy ? "disabled" : ""}>
+    ${c.error ? `<div class="err">${esc(c.error)}</div>` : ""}
+    ${c.youtube_url ? `<a href="${esc(c.youtube_url)}" target="_blank" rel="noopener">${esc(c.youtube_url)}</a>` : ""}
+    <div class="row">
+      <button data-act="save" ${busy ? "disabled" : ""}>Kaydet</button>
+      <button data-act="render" ${busy ? "disabled" : ""} title="Hook değiştiyse videoyu yeniden üretir">Yeniden üret</button>
+      ${c.media ? `<a href="${c.media}" download><button type="button">İndir</button></a>` : ""}
+      <button data-act="upload" class="primary" ${busy || !c.media || c.status === "uploaded" ? "disabled" : ""}>Yükle</button>
+      <select name="privacy"><option value="private">Özel</option><option value="unlisted">Liste dışı</option><option value="public">Herkese açık</option></select>
+    </div>
+  </div>`;
+}
+
+function fmt(s) { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); }
+
+async function refresh() {
+  if (editing.size) return; // kullanıcı yazarken yeniden çizme
+  let jobs;
+  try { jobs = await api("/api/jobs"); } catch (e) { $("#jobs").innerHTML = `<p class="err">Sunucuya ulaşılamıyor. Terminalde <code>clipfarm serve</code> çalışıyor mu?</p>`; return; }
+  $("#jobs").innerHTML = jobs.map((j) => `
+    <section class="job">
+      <div class="job-head" data-toggle="${j.id}">
+        <span class="status ${j.status}">${esc(STATUS[j.status] || j.status)}</span>
+        <span class="title">${esc(j.stream.uploader ? j.stream.uploader + " · " : "")}${esc(j.stream.title || j.url)}</span>
+        <span class="meta">${j.clips.length} klip · ${new Date(j.created * 1000).toLocaleString("tr-TR")}</span>
+      </div>
+      <div class="log">${esc(j.log.join("\n"))}${j.error ? "\n" + esc(j.error) : ""}</div>
+      ${expanded.has(j.id) || jobs[0].id === j.id ? `<div class="clips">${j.clips.map((c) => clipCard(j, c)).join("")}</div>` : ""}
+    </section>`).join("") || `<p class="meta">Henüz iş yok. Yukarıya bir yayın adresi yapıştırın veya Chrome eklentisini kullanın.</p>`;
+}
+
+document.addEventListener("focusin", (e) => { if (e.target.closest(".clip")) editing.add(e.target); });
+document.addEventListener("focusout", (e) => { editing.delete(e.target); });
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("[data-toggle]");
+  if (t) { const id = t.dataset.toggle; expanded.has(id) ? expanded.delete(id) : expanded.add(id); sessionStorage.setItem("open", JSON.stringify([...expanded])); editing.clear(); refresh(); return; }
+  const b = e.target.closest("button[data-act]");
+  if (!b) return;
+  const card = b.closest(".clip"), base = `/api/jobs/${card.dataset.job}/clips/${card.dataset.clip}`;
+  const fields = { hook: $("[name=hook]", card).value, title: $("[name=title]", card).value, description: $("[name=description]", card).value, tags: $("[name=tags]", card).value.split(",") };
+  b.disabled = true;
+  try {
+    await api(base, { method: "PATCH", body: JSON.stringify(fields) });
+    if (b.dataset.act === "render") await api(base + "/render", { method: "POST", body: "{}" });
+    if (b.dataset.act === "upload") await api(base + "/upload", { method: "POST", body: JSON.stringify({ privacy: $("[name=privacy]", card).value }) });
+  } catch (err) { alert(err.message); }
+  editing.clear();
+  refresh();
+});
+
+$("#newJob").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target, cam = f.cam.value.trim();
+  try {
+    await api("/api/jobs", { method: "POST", body: JSON.stringify({
+      url: f.url.value.trim(), count: +f.count.value, layout: f.layout.value,
+      cam: cam ? cam.split(",").map(Number) : null, upload: f.upload.checked, privacy: f.privacy.value,
+    }) });
+    f.url.value = "";
+    refresh();
+  } catch (err) { alert(err.message); }
+});
+
+status(); refresh();
+setInterval(refresh, 3000);
+setInterval(status, 15000);
+</script>
+</body>
+</html>

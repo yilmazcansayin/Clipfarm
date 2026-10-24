@@ -120,7 +120,7 @@ def render(
         graph = graph[: -len("[v]")] + f",ass={ass_file.name}[v]"
     graph = graph[: -len("[v]")] + f",fps={fps},format=yuv420p[v]"
     cmd = [
-        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-stats",
+        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
         "-i", str(src.resolve()),
         "-filter_complex", graph,
         "-map", "[v]",

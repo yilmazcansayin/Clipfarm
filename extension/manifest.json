@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Clipfarm",
+  "version": "0.2.0",
+  "description": "İzlediğin yayından tek tıkla YouTube Shorts üret (yerel Clipfarm sunucusuyla çalışır).",
+  "action": { "default_popup": "popup.html", "default_title": "Clipfarm" },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "icons": { "128": "icon128.png" }
+}

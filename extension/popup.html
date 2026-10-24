@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 320px; margin: 0; padding: 14px; background: #0f1115; color: #e8eaf0; font: 13px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 15px; margin: 0 0 8px; }
+  .url { font-size: 11px; color: #8b93a7; word-break: break-all; margin-bottom: 10px; }
+  .box { border: 1px solid #262b36; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+  .box b { display: block; margin-bottom: 6px; }
+  button, select { font: inherit; color: inherit; background: #262b36; border: 0; border-radius: 8px; padding: 7px 10px; cursor: pointer; }
+  button.primary { background: #ff3b5c; color: #fff; font-weight: 600; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  #msg { min-height: 18px; font-size: 12px; color: #f5a623; }
+  .err { color: #ff5d5d !important; }
+  .muted { color: #8b93a7; font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>🎬 Clipfarm</h1>
+  <div class="url" id="url">…</div>
+  <div class="box">
+    <b>Otomatik: en iyi anları bul</b>
+    <div class="row">
+      <select id="count"><option>3</option><option selected>5</option><option>8</option><option>12</option></select>
+      <select id="layout"><option value="blur">Bulanık arka plan</option><option value="crop">Kırp</option><option value="split">Kamera + oyun</option></select>
+      <button class="primary" id="auto">Klip üret</button>
+    </div>
+    <div class="muted">Uzun yayınlarda ses ve sohbet tepeleri bulunur, Claude en iyilerini seçip başlık yazar.</div>
+  </div>
+  <div class="box">
+    <b>Elle: bu kısmı klip yap</b>
+    <div class="row">
+      <button id="mark">Başlangıç işaretle</button>
+      <button id="send" disabled>Bitiş + gönder</button>
+      <button id="last30">Son 30 sn</button>
+    </div>
+    <div class="muted" id="markInfo">Videoyu istediğin ana getir ve işaretle.</div>
+  </div>
+  <div id="msg"></div>
+  <div class="row"><button id="panel">Paneli aç</button><span class="muted" id="server"></span></div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -30,6 +30,19 @@ class Style:
     words_per_line: int = 3
 
 
+_MODELS: dict[tuple[str, str], object] = {}
+
+
+def load_model(model_size: str = "small", device: str = "auto"):
+    """Whisper modelini bir kez yükleyip sonraki çağrılarda tekrar kullanır."""
+    key = (model_size, device)
+    if key not in _MODELS:
+        from faster_whisper import WhisperModel
+
+        _MODELS[key] = WhisperModel(model_size, device=device, compute_type="auto")
+    return _MODELS[key]
+
+
 def transcribe(
     media: Path,
     language: str | None = None,
@@ -37,9 +50,7 @@ def transcribe(
     device: str = "auto",
 ) -> tuple[list[Word], str]:
     """Kelime zaman damgalarıyla konuşmayı yazıya döker. (kelimeler, dil) döner."""
-    from faster_whisper import WhisperModel
-
-    model = WhisperModel(model_size, device=device, compute_type="auto")
+    model = load_model(model_size, device)
     segments, info = model.transcribe(
         str(media),
         language=language,

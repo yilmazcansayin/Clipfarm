@@ -1,26 +1,25 @@
 # Clipfarm
 
-Yayıncıların YouTube / Twitch / Kick yayınlarından kesit alıp **dikey (9:16), kelime kelime altyazılı, başlıklı** YouTube Shorts videosuna çeviren komut satırı aracı.
+Ünlü yayıncıların uzun yayınlarından (YouTube, Twitch, Kick) **en iyi anları otomatik bulan**, onları **dikey, altyazılı, başlıklı Shorts**'a çeviren ve **YouTube'a yükleyen** araç. Chrome eklentisiyle izlediğin sekmeden tek tıkla çalışır.
 
-- **İndirme:** [yt-dlp](https://github.com/yt-dlp/yt-dlp) (YouTube videoları ve canlı yayın kayıtları, Twitch VOD ve klipleri, Kick VOD ve klipleri). Saatlerce süren yayının tamamını değil, yalnızca istenen aralığı indirir.
-- **Altyazı:** [faster-whisper](https://github.com/SYSTRAN/faster-whisper) ile otomatik, kelime zamanlamalı. Türkçe ve İngilizce otomatik algılanır; Türkçe büyük harf (i → İ) doğru yapılır.
-- **Dikey düzen:** ffmpeg ile üç seçenek:
-  - `blur`: video ortada, arkada bulanık kopyası (her içerik için güvenli varsayılan)
-  - `crop`: ortadan (veya `--crop-x` ile istenen yerden) kırp, tam ekran
-  - `split`: üstte yayıncının kamerası, altta oyun görüntüsü (oyun yayınları için en çok izlenen düzen)
-- **Yazılar:** üstte dikkat çekici başlık (`--hook`), kaynak yayıncı etiketi (`--credit`).
-- **Chrome yer imi:** videoyu izlerken iki tıkla başlangıç ve bitişi işaretle; komut panoya kopyalanır.
+```
+Chrome eklentisi ──► yerel Clipfarm sunucusu (127.0.0.1:8765)
+                         │ 1. yt-dlp: yayının yalnızca sesini + sohbet kaydını indir
+                         │ 2. ses yüksekliği + sohbet yoğunluğu tepeleri → aday anlar
+                         │ 3. Whisper: adayları yazıya dök
+                         │ 4. Claude: en iyi anları seç, kesim noktası, hook, başlık, açıklama, etiket
+                         │ 5. yt-dlp: yalnızca seçilen kesitlerin videosunu indir
+                         │ 6. ffmpeg: 9:16 düzen + kelime kelime altyazı + hook + kaynak etiketi
+                         ▼
+                    Panel (onayla / düzenle) ──► YouTube Data API ile yükleme
+```
 
 ## Kurulum
 
 Python 3.10+ ve ffmpeg gerekir.
 
 ```bash
-# ffmpeg
-#   Windows: winget install Gyan.FFmpeg
-#   macOS:   brew install ffmpeg
-#   Linux:   sudo apt install ffmpeg
-
+# ffmpeg — Windows: winget install Gyan.FFmpeg | macOS: brew install ffmpeg | Linux: sudo apt install ffmpeg
 git clone https://github.com/yilmazcansayin/Clipfarm.git
 cd Clipfarm
 python -m venv .venv
@@ -28,64 +27,80 @@ python -m venv .venv
 pip install -e .
 ```
 
-İlk altyazı çalıştırmasında Whisper modeli (small ≈ 500 MB) bir kez indirilir. yt-dlp'yi sık güncelleyin (`pip install -U yt-dlp`), çünkü siteler değiştikçe indirici de güncellenir.
+İlk altyazı işleminde Whisper modeli (small ≈ 500 MB) bir kez indirilir. Siteler değiştikçe indirici de güncellenir, bu yüzden ara sıra `pip install -U yt-dlp` çalıştırın.
+
+### Claude (an seçimi ve başlıklar için önerilir)
+
+[console.anthropic.com](https://console.anthropic.com) üzerinden bir API anahtarı alın ve sunucuyu başlatmadan önce ortam değişkeni olarak verin:
+
+```bash
+# Windows PowerShell: $env:ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Anahtar yoksa araç yine çalışır; anları yalnızca ses/sohbet skoruna göre seçer, başlıklar basit kalır. Varsayılan model `claude-opus-5-5`; `CLIPFARM_MODEL` ile değiştirilebilir. Bir yayın için tek bir istek atılır (aday sayısına göre birkaç sent).
+
+### YouTube hesabını bağlama (bir kez)
+
+1. [Google Cloud Console](https://console.cloud.google.com) → yeni proje → **YouTube Data API v3**'ü etkinleştirin.
+2. **OAuth izin ekranı** → "External" → kendi Google hesabınızı test kullanıcısı olarak ekleyin.
+3. **Kimlik bilgileri** → **OAuth istemci kimliği** → uygulama türü **Masaüstü uygulaması** → JSON'u indirin.
+4. Dosyayı `~/.clipfarm/client_secret.json` olarak kaydedin (Windows: `C:\Users\<ad>\.clipfarm\client_secret.json`).
+5. `clipfarm youtube-login` → açılan Chrome penceresinde kanalınızı seçip izin verin.
+
+Notlar: YouTube API'si günde 100 yüklemeye izin veriyor. OAuth uygulaması "Testing" durumundayken Google girişi 7 günde bir yeniler; kalıcı olması için izin ekranında uygulamayı "In production" yapın (kendi kullanımınız için doğrulama gerekmez, girişte bir uyarı görürsünüz).
+
+### Chrome eklentisi
+
+1. Chrome'da `chrome://extensions` → sağ üstten **Geliştirici modu**'nu açın.
+2. **Paketlenmemiş öğe yükle** → repodaki `extension/` klasörünü seçin.
+3. Eklentiyi araç çubuğuna sabitleyin.
 
 ## Kullanım
 
 ```bash
-# Twitch / Kick klibi: tek komut
-clipfarm make "https://kick.com/eray/clips/clip_01ABC..." --hook "BUNU KİMSE BEKLEMİYORDU 😳" --credit "kick.com/eray"
+clipfarm serve        # sunucuyu başlatın ve açık bırakın; panel: http://127.0.0.1:8765
+```
 
-# Uzun yayından aralık kes (yalnızca o kısım indirilir)
-clipfarm make "https://www.twitch.tv/videos/2299..." --start 1:02:10 --end 1:02:55 \
-  --layout split --cam 0.72,0.02,0.27,0.30 --hook "Jahrein'in tepkisi 😂" --credit "twitch.tv/jahrein"
+Chrome'da bir yayın kaydı (YouTube videosu/canlı yayın kaydı, Twitch VOD, Kick VOD) veya klip açın, eklentiye tıklayın:
 
-# Bilgisayardaki bir dosyadan
-clipfarm make kayit.mp4 --start 30 --end 75 --layout crop --crop-x 0.4
+- **Klip üret (otomatik):** yayındaki en iyi 3–12 anı bulur ve Shorts'a çevirir. 5 saatlik bir yayın birkaç dakikada analiz edilir; yalnızca ses ve seçilen kesitler indirilir.
+- **Başlangıç işaretle → Bitiş + gönder:** istediğiniz aralığı elle seçin.
+- **Son 30 sn:** videoda o an izlediğiniz yerin son 30 saniyesini klip yapar.
 
-# Sadece indir
+Klipler panelde görünür. Her klip için videoyu izleyin; hook, başlık, açıklama ve etiketleri düzenleyin. Hook değiştiyse **Yeniden üret**, beğendiyseniz **Yükle**'ye basın. Yeni iş oluştururken "Hazır olunca YouTube'a otomatik yükle" kutusunu işaretlerseniz onay beklemeden yüklenir (varsayılan görünürlük: Özel).
+
+Canlı yayın sürerken analiz yapılmaz; yayın bitince kaydın (VOD) adresini kullanın.
+
+### Düzenler
+
+| Düzen | Ne zaman |
+|---|---|
+| `blur` (varsayılan) | Video ortada, arkada bulanık kopyası. Her içerikte güvenli. |
+| `crop` | Ortadan (veya `--crop-x` ile istenen yerden) kırp; IRL / tek kişi yayınları. |
+| `split` | Üstte yayıncının kamerası, altta oyun. `--cam x,y,w,h` kamera alanının 0–1 oranları; örneğin sağ üst köşe için `0.72,0.02,0.27,0.30`. Her yayıncının kamera yeri sabittir, bir kez bulmanız yeterli. |
+
+### Komut satırı
+
+```bash
+clipfarm auto "https://www.twitch.tv/videos/2299..." --count 5            # otomatik, panelsiz
+clipfarm auto "https://www.youtube.com/watch?v=..." -n 8 --upload --privacy unlisted
+clipfarm make "https://kick.com/xqc/clips/clip_01..." --hook "HE WAS NOT READY 😳" --credit "kick.com/xqc"
+clipfarm make kayit.mp4 --start 1:02:10 --end 1:02:55 --layout split --cam 0.72,0.02,0.27,0.30
+clipfarm upload output/klip_short.mp4 --title "Kai Cenat loses it #shorts" --privacy public
 clipfarm get "https://www.youtube.com/watch?v=..." --start 12:00 --end 13:00
 ```
 
-Çıktılar `output/` klasörüne yazılır:
+`make` çıktıları `output/` klasörüne yazılır: `<ad>_short.mp4` (yüklenecek video), `<ad>.words.json` (altyazı kelimeleri; düzeltip `--words` ile tekrar kullanın), `<ad>_short.ass` (altyazı dosyası; `--ass` ile olduğu gibi kullanın). Otomatik işler ve panel dosyaları `~/.clipfarm/jobs/` altında tutulur.
 
-| Dosya | Ne işe yarar |
-|---|---|
-| `<ad>_short.mp4` | YouTube'a yüklenecek 1080x1920 video |
-| `<ad>.words.json` | Whisper'ın çıkardığı kelimeler. Yanlış kelimeyi düzeltip `--words <dosya>` ile tekrar çalıştırın; yeniden yazıya dökme yapılmaz |
-| `<ad>.ass` | Altyazı dosyası. Aegisub ile elle düzenleyip `--ass <dosya>` ile kullanabilirsiniz |
-
-### split düzeninde kamera alanı
-
-`--cam x,y,w,h` değerleri kaynak görüntünün oranlarıdır (0–1). Örneğin kamera sağ üst köşede, genişliğin %27'si ve yüksekliğin %30'u kadarsa: `--cam 0.72,0.02,0.27,0.30`. Her yayıncının kamera yeri sabit olduğu için bir kez bulup not etmeniz yeterli.
-
-### Sık kullanılan seçenekler
-
-| Seçenek | Açıklama |
-|---|---|
-| `--layout blur\|crop\|split` | dikey düzen |
-| `--hook "..."` / `--hook-seconds 4` | üst başlık / kaç saniye görünsün |
-| `--credit "twitch.tv/..."` | kaynak yayıncı etiketi |
-| `--lang tr` | dili sabitle (boşsa otomatik) |
-| `--model medium` | daha doğru ama daha yavaş altyazı |
-| `--words-per-line 2` | ekranda aynı anda kaç kelime |
-| `--highlight 00FF88` | konuşulan kelimenin rengi |
-| `--cookies-from-browser chrome` | abonelere özel veya giriş isteyen videolar için Chrome oturumunu kullan |
-
-## Chrome ile iş akışı
-
-1. `python chrome/build_bookmarklet.py` çalıştırın; `chrome/bookmarklet.txt` oluşur.
-2. Chrome'da yer imleri çubuğuna sağ tıklayın → **Sayfa ekle** → ad: `Clipfarm`, URL: `bookmarklet.txt` içindeki satırın tamamı.
-3. YouTube, Twitch VOD veya Kick VOD izlerken kesitin başladığı anda yer imine tıklayın, bittiği anda bir kez daha tıklayın. `clipfarm make "..." --start .. --end ..` komutu panoya kopyalanır.
-4. Twitch veya Kick **klip** sayfasında tek tık yeterlidir.
-5. Komutu terminale yapıştırın, `--hook` ve `--credit` ekleyip çalıştırın.
+Eklenti kurmadan hızlı işaretleme için `chrome/` klasöründe bir yer imi (bookmarklet) de var: `python chrome/build_bookmarklet.py` çalıştırıp çıkan satırı yer imi adresi olarak kaydedin. İki tıkla başlangıç ve bitişi işaretler, `clipfarm make` komutunu panoya kopyalar.
 
 ## Telif ve YouTube kuralları (önemli)
 
-- Başkasının yayınını izin almadan yüklemek telif ihlalidir; Content ID eşleşmesi, telif ihtarı (3 ihtarda kanal kapanır) veya gelirin hak sahibine gitmesi olabilir. **Klip kullanımına izin veren veya clipper programı olan yayıncılarla çalışın** ve izni yazılı olarak (Discord mesajı, e-posta, kampanya sözleşmesi) saklayın.
-- YouTube Ekim 2026'dan itibaren Shorts akışında az düzenlenmiş yeniden yüklemelerin erişimini düşürüyor. Sadece kırpıp altyazı eklemek yetmeyebilir: kendi yorumunuz, bağlam veren başlık, birden çok anı birleştiren derleme veya sesli anlatım gibi **özgün katkı** ekleyin.
-- Kaynağı her zaman belirtin (`--credit`) ve açıklamaya yayıncının kanal linkini koyun.
-- Yayında çalan müzik ayrı bir Content ID riski taşır; müzikli kısımları kesin veya sesi kısın.
+- Başkasının yayınını izinsiz yüklemek telif ihlalidir: Content ID eşleşmesi, telif ihtarı (3 ihtarda kanal kapanır) veya gelirin hak sahibine gitmesi olabilir. **Klip kullanımına izin veren ya da clipper programı olan yayıncılarla çalışın** (Vyro, Whop, Content Rewards kampanyaları, yayıncıların Discord'ları) ve izni yazılı saklayın.
+- YouTube Ekim 2026'dan itibaren Shorts akışında az düzenlenmiş yeniden yüklemelerin erişimini düşürüyor. Claude'un yazdığı hook ve bağlam bunun için var; yine de yayından önce gözden geçirip kendi bakış açınızı ekleyin.
+- Kaynak yayıncının kanalı videoya (`--credit`, otomatik) ve açıklamaya eklenir; silmeyin.
+- Kumar / slot yayınlarından klip almayın; yayında çalan müzik ayrı bir Content ID riskidir.
 
 ## Geliştirme
 
