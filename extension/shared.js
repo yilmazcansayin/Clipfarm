@@ -1,5 +1,5 @@
 // popup.js ve background.js tarafından paylaşılan yardımcılar (content.js kendi kopyasını taşır).
-const SERVER = "http://127.0.0.1:8765";
+const SERVER = "http://127.0.0.1:38765";
 
 function cleanUrl(href) {
   const u = new URL(href);

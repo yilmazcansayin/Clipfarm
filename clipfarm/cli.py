@@ -16,7 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from . import __version__
+from . import DEFAULT_PORT, __version__
 from .captions import Style, build_ass, load_words, save_words, transcribe
 from .pipeline import make_short
 from .render import LAYOUTS, SHORTS_MAX_SECONDS, Layout, probe, render, require_ffmpeg, trim
@@ -242,7 +242,7 @@ def build_parser() -> argparse.ArgumentParser:
     a.set_defaults(func=cmd_auto)
 
     sv = sub.add_parser("serve", help="panel ve Chrome eklentisi için yerel sunucuyu başlat")
-    sv.add_argument("--port", type=int, default=8765)
+    sv.add_argument("--port", type=int, default=DEFAULT_PORT)
     sv.set_defaults(func=cmd_serve)
 
     yl = sub.add_parser("youtube-login", help="YouTube hesabını bağla (bir kez)")

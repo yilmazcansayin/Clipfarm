@@ -12,7 +12,7 @@ YouTube, Twitch ve Kick videoları tek dosya değil, parça parça akış (HLS/D
 Yardımcı kapalıyken, doğrudan dosya olarak oynatılan videolar (`.mp4`, `.webm`) yine Chrome'un kendi indiricisiyle indirilir.
 
 ```
-Chrome eklentisi ──► yerel Clipfarm yardımcısı (127.0.0.1:8765)
+Chrome eklentisi ──► yerel Clipfarm yardımcısı (127.0.0.1:38765)
   ⬇ İndir düğmesi      ├─ İndirici: yt-dlp + ffmpeg → İndirilenler/Clipfarm
   Yakalanan akışlar    └─ Shorts: ses/sohbet tepeleri → Whisper → Claude seçimi → 9:16 video → YouTube
 ```
@@ -86,7 +86,7 @@ YouTube'da yaş kısıtlı veya üyelere özel videolar için yt-dlp'nin tarayı
 
 Chrome'da bir yayın kaydı (YouTube videosu/canlı yayın kaydı, Twitch VOD, Kick VOD) açın. Eklenti simgesine tıklayıp **En iyi anlardan Shorts üret**'e basın. Yayındaki en iyi 3–8 an bulunur ve Shorts'a çevrilir. 5 saatlik bir yayın birkaç dakikada analiz edilir, çünkü yalnızca ses ve seçilen kesitler indirilir. Belirli bir anı Shorts yapmak için videonun üstündeki panelde aralık seçip **Shorts yap**'a basın.
 
-Klipler panelde (`http://127.0.0.1:8765`) görünür. Her klip için videoyu izleyin; hook, başlık, açıklama ve etiketleri düzenleyin. Hook değiştiyse **Yeniden üret**, beğendiyseniz **Yükle**'ye basın. Yeni iş oluştururken "Hazır olunca YouTube'a otomatik yükle" kutusunu işaretlerseniz onay beklemeden yüklenir (varsayılan görünürlük: Özel).
+Klipler panelde (`http://127.0.0.1:38765`) görünür. Her klip için videoyu izleyin; hook, başlık, açıklama ve etiketleri düzenleyin. Hook değiştiyse **Yeniden üret**, beğendiyseniz **Yükle**'ye basın. Yeni iş oluştururken "Hazır olunca YouTube'a otomatik yükle" kutusunu işaretlerseniz onay beklemeden yüklenir (varsayılan görünürlük: Özel).
 
 Canlı yayın sürerken analiz yapılmaz; yayın bitince kaydın (VOD) adresini kullanın.
 

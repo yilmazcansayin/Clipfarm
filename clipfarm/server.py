@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 import mimetypes
 import re
+import sys
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
 from urllib.parse import urlparse
 
-from . import __version__, downloads, editor, youtube
+from . import DEFAULT_PORT, __version__, downloads, editor, youtube
 from .pipeline import JOBS_DIR, Job, Options, Worker, list_jobs, render_clip, run_job, upload_clip
 
 EDITABLE = ("hook", "title", "description", "tags")
@@ -232,11 +233,24 @@ def _safe_upload(job_id: str, clip_id: str, privacy: str | None, publish_at: str
     upload_clip(job, job.clip(clip_id), privacy, publish_at)
 
 
-def serve(port: int = 8765) -> None:
+class Server(ThreadingHTTPServer):
+    # Windows'ta SO_REUSEADDR, portu kullanan başka bir uygulama varken de bağlanmaya izin
+    # veriyor ve istekler o uygulamaya gidiyor; orada kapalı tutup çakışmayı hata olarak gösteriyoruz.
+    allow_reuse_address = not sys.platform.startswith("win")
+
+
+def serve(port: int = DEFAULT_PORT) -> None:
     Handler.worker = Worker()
     Handler.dl_worker = Worker()
     Handler.store = downloads.Store()
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    try:
+        httpd = Server(("127.0.0.1", port), Handler)
+    except OSError as exc:
+        raise SystemExit(
+            f"127.0.0.1:{port} portu başka bir uygulama tarafından kullanılıyor ({exc}). "
+            "O uygulamayı kapatın ya da `clipfarm serve --port <başka port>` kullanın "
+            "(eklentideki extension/shared.js dosyasındaki adresi de değiştirin)."
+        )
     print(f"Clipfarm paneli: http://127.0.0.1:{port}  (durdurmak için Ctrl+C)")
     print(f"İndirilenler: {downloads.DOWNLOAD_DIR}")
     print(f"Claude: {'açık' if editor.available() else 'kapalı (ANTHROPIC_API_KEY yok)'} · "
