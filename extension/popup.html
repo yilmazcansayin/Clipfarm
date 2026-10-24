@@ -3,42 +3,41 @@
 <head>
 <meta charset="utf-8">
 <style>
-  body { width: 320px; margin: 0; padding: 14px; background: #0f1115; color: #e8eaf0; font: 13px/1.4 system-ui, sans-serif; }
-  h1 { font-size: 15px; margin: 0 0 8px; }
-  .url { font-size: 11px; color: #8b93a7; word-break: break-all; margin-bottom: 10px; }
-  .box { border: 1px solid #262b36; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
-  .box b { display: block; margin-bottom: 6px; }
-  button, select { font: inherit; color: inherit; background: #262b36; border: 0; border-radius: 8px; padding: 7px 10px; cursor: pointer; }
-  button.primary { background: #ff3b5c; color: #fff; font-weight: 600; }
+  body { width: 360px; margin: 0; padding: 12px; background: #0f1115; color: #e8eaf0; font: 13px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 15px; margin: 0; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #8b93a7; margin: 14px 0 6px; }
+  .top { display: flex; align-items: center; gap: 8px; }
+  .top span { flex: 1; text-align: right; font-size: 11px; color: #8b93a7; }
+  .item { border: 1px solid #262b36; border-radius: 8px; padding: 7px 9px; margin-bottom: 6px; }
+  .item .u { font-size: 11px; color: #8b93a7; word-break: break-all; max-height: 30px; overflow: hidden; }
   .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-  #msg { min-height: 18px; font-size: 12px; color: #f5a623; }
-  .err { color: #ff5d5d !important; }
-  .muted { color: #8b93a7; font-size: 12px; }
+  .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  button, select { font: inherit; color: inherit; background: #262b36; border: 0; border-radius: 7px; padding: 5px 9px; cursor: pointer; }
+  button.p { background: #ff3b5c; color: #fff; font-weight: 600; }
+  .bar { height: 4px; background: #262b36; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+  .bar i { display: block; height: 100%; background: #ff3b5c; }
+  .ok { color: #2ecc71; } .err { color: #ff6b6b; } .muted { color: #8b93a7; font-size: 12px; }
+  #msg { min-height: 16px; font-size: 12px; color: #f5a623; }
 </style>
 </head>
 <body>
-  <h1>🎬 Clipfarm</h1>
-  <div class="url" id="url">…</div>
-  <div class="box">
-    <b>Otomatik: en iyi anları bul</b>
-    <div class="row">
-      <select id="count"><option>3</option><option selected>5</option><option>8</option><option>12</option></select>
-      <select id="layout"><option value="blur">Bulanık arka plan</option><option value="crop">Kırp</option><option value="split">Kamera + oyun</option></select>
-      <button class="primary" id="auto">Klip üret</button>
-    </div>
-    <div class="muted">Uzun yayınlarda ses ve sohbet tepeleri bulunur, Claude en iyilerini seçip başlık yazar.</div>
-  </div>
-  <div class="box">
-    <b>Elle: bu kısmı klip yap</b>
-    <div class="row">
-      <button id="mark">Başlangıç işaretle</button>
-      <button id="send" disabled>Bitiş + gönder</button>
-      <button id="last30">Son 30 sn</button>
-    </div>
-    <div class="muted" id="markInfo">Videoyu istediğin ana getir ve işaretle.</div>
+  <div class="top"><h1>🎬 Clipfarm</h1><span id="server">…</span></div>
+  <p class="muted">Videonun üstüne gelince çıkan <b>⬇ İndir</b> düğmesiyle tüm videoyu ya da bir aralığı indirebilirsin.</p>
+
+  <h2>Bu sayfada yakalanan videolar</h2>
+  <div id="media" class="muted">Henüz yok. Videoyu oynatınca burada görünür.</div>
+
+  <h2>İndirmeler</h2>
+  <div id="downloads" class="muted">…</div>
+
+  <h2>Shorts</h2>
+  <div class="row">
+    <select id="count"><option>3</option><option selected>5</option><option>8</option></select>
+    <button class="p" id="auto" title="Bu sayfadaki uzun yayında en iyi anları bulup Shorts üretir">En iyi anlardan Shorts üret</button>
+    <button id="panel">Panel</button>
   </div>
   <div id="msg"></div>
-  <div class="row"><button id="panel">Paneli aç</button><span class="muted" id="server"></span></div>
+  <script src="shared.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

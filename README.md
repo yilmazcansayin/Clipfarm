@@ -1,22 +1,29 @@
 # Clipfarm
 
-Ünlü yayıncıların uzun yayınlarından (YouTube, Twitch, Kick) **en iyi anları otomatik bulan**, onları **dikey, altyazılı, başlıklı Shorts**'a çeviren ve **YouTube'a yükleyen** araç. Chrome eklentisiyle izlediğin sekmeden tek tıkla çalışır.
+İki işi olan bir Chrome eklentisi ve onun yanında çalışan küçük bir yardımcı uygulama:
+
+1. **Video indirici:** Herhangi bir sitedeki videonun üstüne gelince **⬇ İndir** düğmesi çıkar. Tüm videoyu (en iyi kalite, 1080p, 720p, 480p ya da sadece ses) veya **yalnızca istediğin aralığı** indirirsin. Örneğin 1 saatlik videonun 1 dakikalık kısmı. Büyük görsellerde de indirme düğmesi çıkar.
+2. **Shorts üretici:** Ünlü yayıncıların uzun yayınlarında (YouTube, Twitch, Kick) en iyi anları otomatik bulur, dikey, altyazılı ve başlıklı Shorts'a çevirir, istersen YouTube'a yükler.
+
+### Neden yardımcı uygulama var?
+
+YouTube, Twitch ve Kick videoları tek dosya değil, parça parça akış (HLS/DASH) olarak gelir; YouTube ayrıca adresleri şifreler. Bir Chrome eklentisi bunları tek başına güvenilir biçimde birleştiremez. Internet Download Manager ve Video DownloadHelper da bu yüzden bilgisayara bir yardımcı program kurar. Clipfarm'ın yardımcısı `yt-dlp` (1800'den fazla siteyi destekler) ve `ffmpeg` kullanır. Aralık indirirken yalnızca o kısım indirilir; 1 saatlik videonun tamamını indirmez.
+
+Yardımcı kapalıyken, doğrudan dosya olarak oynatılan videolar (`.mp4`, `.webm`) yine Chrome'un kendi indiricisiyle indirilir.
 
 ```
-Chrome eklentisi ──► yerel Clipfarm sunucusu (127.0.0.1:8765)
-                         │ 1. yt-dlp: yayının yalnızca sesini + sohbet kaydını indir
-                         │ 2. ses yüksekliği + sohbet yoğunluğu tepeleri → aday anlar
-                         │ 3. Whisper: adayları yazıya dök
-                         │ 4. Claude: en iyi anları seç, kesim noktası, hook, başlık, açıklama, etiket
-                         │ 5. yt-dlp: yalnızca seçilen kesitlerin videosunu indir
-                         │ 6. ffmpeg: 9:16 düzen + kelime kelime altyazı + hook + kaynak etiketi
-                         ▼
-                    Panel (onayla / düzenle) ──► YouTube Data API ile yükleme
+Chrome eklentisi ──► yerel Clipfarm yardımcısı (127.0.0.1:8765)
+  ⬇ İndir düğmesi      ├─ İndirici: yt-dlp + ffmpeg → İndirilenler/Clipfarm
+  Yakalanan akışlar    └─ Shorts: ses/sohbet tepeleri → Whisper → Claude seçimi → 9:16 video → YouTube
 ```
 
 ## Kurulum
 
 Python 3.10+ ve ffmpeg gerekir.
+
+**En kolay yol:** Repoyu indirin. Windows'ta `baslat.bat`, macOS'ta `baslat.command` dosyasına çift tıklayın. İlk çalıştırmada kurulum yapılır, sonra yardımcı uygulama açılır. İndirmeler ve Shorts için bu pencere açık kalmalı.
+
+Elle kurulum:
 
 ```bash
 # ffmpeg — Windows: winget install Gyan.FFmpeg | macOS: brew install ffmpeg | Linux: sudo apt install ffmpeg
@@ -56,19 +63,30 @@ Notlar: YouTube API'si günde 100 yüklemeye izin veriyor. OAuth uygulaması "Te
 2. **Paketlenmemiş öğe yükle** → repodaki `extension/` klasörünü seçin.
 3. Eklentiyi araç çubuğuna sabitleyin.
 
+Chrome Web Mağazası YouTube indirme eklentilerine izin vermediği için eklenti mağazadan değil bu şekilde yüklenir. Eklenti yalnızca bilgisayarınızdaki yardımcıyla (127.0.0.1) konuşur, hiçbir yere veri göndermez.
+
 ## Kullanım
 
 ```bash
-clipfarm serve        # sunucuyu başlatın ve açık bırakın; panel: http://127.0.0.1:8765
+clipfarm serve        # yardımcıyı başlatın ve açık bırakın (baslat.bat / baslat.command aynısını yapar)
 ```
 
-Chrome'da bir yayın kaydı (YouTube videosu/canlı yayın kaydı, Twitch VOD, Kick VOD) veya klip açın, eklentiye tıklayın:
+### Video indirme
 
-- **Klip üret (otomatik):** yayındaki en iyi 3–12 anı bulur ve Shorts'a çevirir. 5 saatlik bir yayın birkaç dakikada analiz edilir; yalnızca ses ve seçilen kesitler indirilir.
-- **Başlangıç işaretle → Bitiş + gönder:** istediğiniz aralığı elle seçin.
-- **Son 30 sn:** videoda o an izlediğiniz yerin son 30 saniyesini klip yapar.
+1. Herhangi bir sayfada videonun üstüne gelin; sağ üstte **⬇ İndir** düğmesi çıkar.
+2. **Tümünü indir:** kaliteyi seçip tüm videoyu indirir. "Sadece ses" mp3 kaydeder.
+3. **Klip al:** başlangıç ve bitişi yazın (`1:02:30` biçiminde) ya da videoyu istediğiniz yere getirip **⏱ şu an**'a basın. **Son 30 sn**, **Son 1 dk** ve **Buradan 1 dk** kısayolları da var. **Klibi indir** yalnızca o aralığı indirir.
+4. **Shorts yap:** seçili aralıktan (en fazla 3 dk) dikey, altyazılı Shorts üretir.
 
-Klipler panelde görünür. Her klip için videoyu izleyin; hook, başlık, açıklama ve etiketleri düzenleyin. Hook değiştiyse **Yeniden üret**, beğendiyseniz **Yükle**'ye basın. Yeni iş oluştururken "Hazır olunca YouTube'a otomatik yükle" kutusunu işaretlerseniz onay beklemeden yüklenir (varsayılan görünürlük: Özel).
+Dosyalar `İndirilenler/Clipfarm` klasörüne kaydedilir (`CLIPFARM_DOWNLOADS` ile değiştirilebilir). Eklenti simgesine tıklayınca indirmelerin ilerlemesi ve **Göster** düğmesi görünür. Sayfa videoyu tanınmayan bir oynatıcıyla açıyorsa, eklenti oynatma sırasında geçen video akışlarını (m3u8, mpd, mp4) yakalar. Simgedeki sayı bunları gösterir; liste popup'ta durur ve indirme bu adreslerle tekrar denenir.
+
+YouTube'da yaş kısıtlı veya üyelere özel videolar için yt-dlp'nin tarayıcı çerezlerini kullanması gerekebilir: `clipfarm get <adres> --cookies-from-browser chrome`.
+
+### Shorts
+
+Chrome'da bir yayın kaydı (YouTube videosu/canlı yayın kaydı, Twitch VOD, Kick VOD) açın. Eklenti simgesine tıklayıp **En iyi anlardan Shorts üret**'e basın. Yayındaki en iyi 3–8 an bulunur ve Shorts'a çevrilir. 5 saatlik bir yayın birkaç dakikada analiz edilir, çünkü yalnızca ses ve seçilen kesitler indirilir. Belirli bir anı Shorts yapmak için videonun üstündeki panelde aralık seçip **Shorts yap**'a basın.
+
+Klipler panelde (`http://127.0.0.1:8765`) görünür. Her klip için videoyu izleyin; hook, başlık, açıklama ve etiketleri düzenleyin. Hook değiştiyse **Yeniden üret**, beğendiyseniz **Yükle**'ye basın. Yeni iş oluştururken "Hazır olunca YouTube'a otomatik yükle" kutusunu işaretlerseniz onay beklemeden yüklenir (varsayılan görünürlük: Özel).
 
 Canlı yayın sürerken analiz yapılmaz; yayın bitince kaydın (VOD) adresini kullanın.
 

@@ -11,7 +11,7 @@ from importlib import resources
 from pathlib import Path
 from urllib.parse import urlparse
 
-from . import __version__, editor, youtube
+from . import __version__, downloads, editor, youtube
 from .pipeline import JOBS_DIR, Job, Options, Worker, list_jobs, render_clip, run_job, upload_clip
 
 EDITABLE = ("hook", "title", "description", "tags")
@@ -31,6 +31,8 @@ def _summary(job: Job, full: bool = False) -> dict:
 class Handler(BaseHTTPRequestHandler):
     server_version = f"clipfarm/{__version__}"
     worker: Worker
+    dl_worker: Worker
+    store: downloads.Store
 
     def log_message(self, fmt, *args):  # sessiz
         pass
@@ -92,6 +94,8 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif path == "/api/jobs":
             self._json([_summary(j) for j in list_jobs()[:50]])
+        elif path == "/api/downloads":
+            self._json([asdict(t) for t in self.store.list()[:50]])
         elif m := re.fullmatch(r"/api/jobs/([\w-]+)", path):
             job = self._job(m[1])
             self._json(_summary(job, full=True) if job else {"error": "iş bulunamadı"}, 200 if job else 404)
@@ -105,6 +109,30 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": "izin verilmeyen kaynak"}, 403)
         path = urlparse(self.path).path
         body = self._body()
+        if path == "/api/downloads":
+            url = (body.get("url") or "").strip()
+            if not url:
+                return self._json({"error": "url gerekli"}, 400)
+            quality = body.get("quality") or "best"
+            if quality not in downloads.QUALITIES:
+                return self._json({"error": f"geçersiz kalite: {quality}"}, 400)
+            start, end = body.get("start"), body.get("end")
+            if start is not None and end is not None and float(end) <= float(start):
+                return self._json({"error": "bitiş, başlangıçtan sonra olmalı"}, 400)
+            task = self.store.add(
+                url=url, sources=[s for s in body.get("sources") or [] if isinstance(s, str)][:10],
+                referer=body.get("referer") or "", title=body.get("title") or "",
+                start=None if start is None else float(start), end=None if end is None else float(end),
+                quality=quality,
+            )
+            self.dl_worker.submit(lambda: downloads.run(task, self.store))
+            return self._json(asdict(task), 201)
+        if m := re.fullmatch(r"/api/downloads/([\w-]+)/reveal", path):
+            task = self.store.tasks.get(m[1])
+            if not task or not task.file:
+                return self._json({"error": "dosya yok"}, 404)
+            downloads.reveal(task.file)
+            return self._json({"ok": True})
         if path == "/api/jobs":
             url = (body.get("url") or "").strip()
             if not url:
@@ -206,8 +234,11 @@ def _safe_upload(job_id: str, clip_id: str, privacy: str | None, publish_at: str
 
 def serve(port: int = 8765) -> None:
     Handler.worker = Worker()
+    Handler.dl_worker = Worker()
+    Handler.store = downloads.Store()
     httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     print(f"Clipfarm paneli: http://127.0.0.1:{port}  (durdurmak için Ctrl+C)")
+    print(f"İndirilenler: {downloads.DOWNLOAD_DIR}")
     print(f"Claude: {'açık' if editor.available() else 'kapalı (ANTHROPIC_API_KEY yok)'} · "
           f"YouTube: {'bağlı' if youtube.is_connected() else 'bağlı değil'}")
     try:
