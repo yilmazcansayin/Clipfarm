@@ -192,6 +192,14 @@ def cmd_upload(args: argparse.Namespace) -> None:
     print(f"\nYüklendi: {url}")
 
 
+def cmd_exp(args: argparse.Namespace) -> None:
+    require_ffmpeg()
+    from .experimental import run_plans
+
+    run_plans(Path(args.plans), Path(args.vod), Path(args.out), model=args.model, lang=args.lang or None,
+              only=args.only.split(",") if args.only else None)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="clipfarm",
@@ -276,6 +284,15 @@ def build_parser() -> argparse.ArgumentParser:
     up.add_argument("--privacy", choices=("private", "unlisted", "public"), default="private")
     up.add_argument("--publish-at", help="zamanlanmış yayın, ISO 8601 (örn. 2026-11-01T18:00:00Z)")
     up.set_defaults(func=cmd_upload)
+
+    ex = sub.add_parser("exp", help="deneysel kurgu: plan JSON'undaki klipleri yerel VOD'dan üret")
+    ex.add_argument("plans", help="plan dosyası (clipfarm/experimental.py başındaki biçim)")
+    ex.add_argument("--vod", required=True, help="yayının yerel video dosyası")
+    ex.add_argument("--out", required=True, help="çıktı klasörü")
+    ex.add_argument("--model", default="small", help="altyazı için Whisper modeli")
+    ex.add_argument("--lang", default="en")
+    ex.add_argument("--only", help="yalnızca bu klipler (virgülle: clip01,clip03)")
+    ex.set_defaults(func=cmd_exp)
     return parser
 
 
