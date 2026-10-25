@@ -186,6 +186,20 @@ def pick_candidates(
     return result
 
 
+def decode_to_wav(media: Path, dst: Path, rate: int = 16000) -> Path:
+    """Tüm sesi baştan sona çözüp tek kanallı WAV yapar.
+
+    Eksik parçalı HLS dosyalarında -ss ile atlamak kapsayıcının zaman damgalarına gider ve
+    10-20 sn kayabilir; baştan çözülen ses ise (boşluklar sessizlik olur) yayının gerçek
+    zamanıyla örtüşür. WAV içinde atlama örnek düzeyinde kesindir.
+    """
+    subprocess.run(
+        ["ffmpeg", "-y", "-v", "error", "-i", str(media), "-vn", "-ac", "1", "-ar", str(rate), str(dst)],
+        check=True,
+    )
+    return dst
+
+
 def extract_audio_segment(media: Path, start: float, end: float, dst: Path) -> Path:
     subprocess.run(
         [

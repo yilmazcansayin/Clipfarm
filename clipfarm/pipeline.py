@@ -207,6 +207,8 @@ def analyze(job: Job) -> list[editor.ClipPlan]:
         audio, chat = Path(job.url), None
     else:
         audio, chat = _download_audio_and_chat(job)
+        job.say("Ses tek parça hâlinde çözülüyor (zamanların kaymaması için)…")
+        audio = highlights.decode_to_wav(audio, audio.with_name("stream16k.wav"))
     job.say("Ses yüksekliği analiz ediliyor…")
     loud = highlights.loudness_per_second(audio)
     chat_times = highlights.parse_chat(chat) if chat else []
