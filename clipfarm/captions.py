@@ -255,6 +255,7 @@ def build_viral_ass(
     size: int = 88,
     position: float = 0.52,
     typing_step: float = 0.03,
+    accent: str | None = "FFE500",
 ) -> tuple[str, list[str], list[float]]:
     """ASS metni, grup renkleri ve kelime başlangıçlarını döner (flaşları kelimeye hizalamak için)."""
     W, H = WIDTH, height
@@ -299,12 +300,12 @@ def build_viral_ass(
 
     if hook:
         hook_text = fmt(hook)
-        accent = PALETTE[0]
+        hook_accent = accent or PALETTE[0]
         head, _, last = hook_text.rpartition(" ")
         hy = int(H * 0.11)
         for i in range(1, len(hook_text) + 1):  # harf harf yazılır, sonra sabit kalır
             if head and i > len(head) + 1:
-                row = [(head, None), (hook_text[len(head) + 1:i], accent)]
+                row = [(head, None), (hook_text[len(head) + 1:i], hook_accent)]
             else:
                 row = [(hook_text[:i], None)]
             t0 = (i - 1) * 0.035
@@ -318,7 +319,7 @@ def build_viral_ass(
     starts: list[float] = []
     groups = group_words(words)
     for gi, group in enumerate(groups):
-        color = PALETTE[gi % len(PALETTE)]
+        color = accent or PALETTE[gi % len(PALETTE)]  # tek renk (varsayılan) ya da her cümlede değişen palet
         colors.append(color)
         flat = [(li, w) for li, line in enumerate(group) for w in line]
         last_end = flat[-1][1].end + 0.5

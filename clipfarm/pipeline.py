@@ -19,6 +19,7 @@ from typing import Callable
 from . import editor, highlights
 from .captions import Style, Word, build_ass, build_viral_ass, transcribe
 from .effects import Effects, effects_filter, find_punches, plan_flashes
+from .story import audio_db, plan_story, remap_words
 from .render import Layout, probe, render, trim
 from .youtube import HOME
 
@@ -39,7 +40,9 @@ class Options:
     ranges: list[list[float]] | None = None  # elle seçilen [başlangıç, bitiş] aralıkları
     upload: bool = False
     privacy: str = "private"
-    effects: bool = True
+    effects: bool = False  # renk canlandırma + flaşlar (kullanıcı istemedi, varsayılan kapalı)
+    story: bool = True  # kurguyla hikâyeleştir: başa kanca, ölü anları kes
+    accent: str = "FFE500"  # altyazı vurgu rengi; boş = her cümlede değişen palet
     look: str = "viral"  # viral: örnek Shorts tarzı ortada birikerek yazılan neon altyazı; classic: alt altyazı + hook kutusu
     aspect: str = "3:4"  # 3:4 (1080x1440) ya da 9:16 (1080x1920)
     watermark: str = ""  # alt ortada küçük kanal adı, örn. "@kanalim"
@@ -231,6 +234,8 @@ def make_short(
     effects: Effects | None = None,
     look: str = "viral",
     watermark: str | None = None,
+    story: bool = False,
+    accent: str | None = "FFE500",
 ) -> Path:
     """Kaynak klipten altyazılı dikey video üretir. Altyazı dosyası dst yanına yazılır.
 
@@ -239,9 +244,15 @@ def make_short(
     look="classic": altta kelime kelime vurgulanan altyazı, üstte hook kutusu ve kaynak yazısı.
     """
     ass_path = dst.with_suffix(".ass")
+    segments = None
+    if story:
+        segments = plan_story(words or [], duration, audio_db(src) if has_audio else None)
+        words = remap_words(words or [], segments)
+        duration = sum(seg.length for seg in segments)
     if look == "viral":
         text, colors, starts = build_viral_ass(
             words or [], language, duration, layout.height, hook=hook, watermark=watermark or None,
+            accent=accent or None,
         )
         if effects is not None and has_audio and not effects.flashes:
             effects.flashes = plan_flashes(find_punches(src), starts, colors)
@@ -252,7 +263,11 @@ def make_short(
         text = build_ass(words or [], language, duration, style, hook=hook, credit=credit)
     ass_path.write_text(text, encoding="utf-8")
     fx = effects_filter(effects) if effects is not None else None
-    return render(src, dst, layout, ass_path, fps=fps, crf=crf, has_audio=has_audio, effects=fx or None)
+    if effects is not None and segments:
+        effects.flashes = []  # flaş zamanları kurgusuz videoya göre; kurguda kapalı
+        fx = effects_filter(effects)
+    return render(src, dst, layout, ass_path, fps=fps, crf=crf, has_audio=has_audio, effects=fx or None,
+                  segments=segments)
 
 
 def render_clip(job: Job, clip: Clip) -> None:
@@ -287,7 +302,7 @@ def render_clip(job: Job, clip: Clip) -> None:
         credit=short_channel(job.stream.get("channel_url", "")) or None,
         has_audio=info["has_audio"],
         effects=Effects() if o.effects else None,
-        look=o.look, watermark=o.watermark,
+        look=o.look, watermark=o.watermark, story=o.story, accent=o.accent,
     )
     clip.file = dst.name
     clip.status = "ready"

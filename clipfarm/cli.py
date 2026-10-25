@@ -57,7 +57,9 @@ def _add_look(p: argparse._ActionsContainer) -> None:
                    help="viral: ortada harf harf biriken neon altyazı (örnek Shorts tarzı); classic: altta altyazı")
     p.add_argument("--aspect", choices=("3:4", "9:16"), default="3:4", help="çıktı oranı")
     p.add_argument("--watermark", help="alt ortada küçük kanal adı, örn. @kanalim")
-    p.add_argument("--no-effects", action="store_true", help="renk canlandırma ve vurgu flaşlarını kapat")
+    p.add_argument("--effects", action="store_true", help="renk canlandırma ve vurgu flaşlarını aç (varsayılan kapalı)")
+    p.add_argument("--no-story", action="store_true", help="kurgu yapma (başa kanca koyma, ölü anları kesme)")
+    p.add_argument("--accent", default="FFE500", help="altyazı vurgu rengi RRGGBB; 'multi' = her cümlede farklı renk")
 
 
 def cmd_get(args: argparse.Namespace) -> None:
@@ -112,7 +114,7 @@ def cmd_make(args: argparse.Namespace) -> None:
         if args.ass:
             ass_path = Path(args.ass).resolve()
             print("Dikey video oluşturuluyor…")
-            fx = None if args.no_effects else effects_filter(Effects())
+            fx = effects_filter(Effects()) if args.effects else None
             render(src, dst, layout, ass_path, fps=args.fps, crf=args.crf, has_audio=info["has_audio"], effects=fx)
         else:
             words, language = [], args.lang or ""
@@ -138,8 +140,9 @@ def cmd_make(args: argparse.Namespace) -> None:
             make_short(
                 src, dst, layout, words, language, info["duration"],
                 hook=args.hook, credit=args.credit, style=style, has_audio=info["has_audio"],
-                fps=args.fps, crf=args.crf, effects=None if args.no_effects else Effects(),
-                look=args.look, watermark=args.watermark,
+                fps=args.fps, crf=args.crf, effects=Effects() if args.effects else None,
+                look=args.look, watermark=args.watermark, story=not args.no_story,
+                accent=None if args.accent == "multi" else args.accent,
             )
             ass_path = dst.with_suffix(".ass")
         print(f"\nHazır: {dst}\nAltyazı dosyası: {ass_path}")
@@ -152,8 +155,9 @@ def cmd_auto(args: argparse.Namespace) -> None:
     opts = Options(
         count=args.count, layout=args.layout, cam=list(args.cam) if args.cam else None,
         cam_height=args.cam_height, crop_x=args.crop_x, model=args.model, lang=args.lang,
-        upload=args.upload, privacy=args.privacy, effects=not args.no_effects,
+        upload=args.upload, privacy=args.privacy, effects=args.effects,
         look=args.look, aspect=args.aspect, watermark=args.watermark or "",
+        story=not args.no_story, accent="" if args.accent == "multi" else args.accent,
     )
     job = run_job(Job.new(args.url, opts))
     print()

@@ -88,7 +88,7 @@ Chrome'da bir yayın kaydı (YouTube videosu/canlı yayın kaydı, Twitch VOD, K
 
 Klipler panelde (`http://127.0.0.1:38765`) görünür. Her klip için videoyu izleyin; hook, başlık, açıklama ve etiketleri düzenleyin. Hook değiştiyse **Yeniden üret**, beğendiyseniz **Yükle**'ye basın. Yeni iş oluştururken "Hazır olunca YouTube'a otomatik yükle" kutusunu işaretlerseniz onay beklemeden yüklenir (varsayılan görünürlük: Özel).
 
-Varsayılan görünüm (`--look viral`) örnek klip kanallarındaki gibidir: 3:4 kırpılmış görüntü, ortada konuşuldukça harf harf yazılıp iki satıra kadar biriken neon parıltılı altyazı (önemli kelimeler renkli, küfürler yıldızlı), üstte harf harf yazılan hook, canlı renk ve sesin patladığı kelimede kısa renk / siyah-beyaz / beyaz flaş. Altyazı her klibin kendi sesinden `medium` Whisper modeliyle çıkarılır. Eski görünüm için `--look classic`, 9:16 için `--aspect 9:16`, flaşsız için `--no-effects`, alta kanal adı için `--watermark @kanal`.
+Klipler efektle değil kurguyla hikâyeleştirilir: klibin en güçlü tepkisi ~2,5 sn'lik kanca olarak en başa konur, ardından hikâye baştan akar; konuşmanın ve sesin olmadığı ölü anlar kesilir, tepkiden sonra kısa bir kuyruk bırakılır (`--no-story` ile kapatılır). Altyazı örnek klip kanallarındaki gibi ortada, konuşuldukça harf harf yazılıp iki satıra kadar birikir; vurgular tek renk (varsayılan sarı, `--accent RRGGBB`, her cümlede farklı renk için `--accent multi`). Küfürler yıldızlanır, altyazı her klibin kendi sesinden `medium` Whisper modeliyle çıkarılır. Görüntü 3:4 kırpılır (`--aspect 9:16`, `--layout blur` seçenekleri var). Renk canlandırma ve flaşlar varsayılan kapalı (`--effects`).
 
 Canlı yayın sürerken analiz yapılmaz; yayın bitince kaydın (VOD) adresini kullanın.
 

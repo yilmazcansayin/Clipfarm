@@ -114,9 +114,20 @@ def render(
     crf: int = 20,
     has_audio: bool = True,
     effects: str | None = None,
+    segments: list | None = None,
 ) -> Path:
-    """Dikey düzen + efektler + yakılmış altyazı ile son Shorts videosunu üretir."""
+    """Dikey düzen + (isteğe bağlı) efektler + yakılmış altyazı ile son Shorts videosunu üretir.
+
+    segments verilirse kaynaktan yalnızca bu parçalar sırayla alınıp birleştirilir (kurgu).
+    """
     graph = video_filter(layout)
+    audio_map = "0:a:0"
+    if segments:
+        from .story import concat_filter
+
+        head, vlabel, alabel = concat_filter(segments, has_audio)
+        graph = head + ";" + graph.replace("[0:v]", vlabel, 1)
+        audio_map = alabel or audio_map
     if effects:
         graph = graph[: -len("[v]")] + f",{effects}[v]"
     if ass_file is not None:
@@ -137,7 +148,7 @@ def render(
         "-map", "[v]",
     ]
     if has_audio:
-        cmd += ["-map", "0:a:0", "-c:a", "aac", "-b:a", "160k", "-ar", "48000"]
+        cmd += ["-map", audio_map, "-c:a", "aac", "-b:a", "160k", "-ar", "48000"]
     cmd += [
         "-c:v", "libx264", "-preset", "medium", "-crf", str(crf),
         "-profile:v", "high", "-movflags", "+faststart",

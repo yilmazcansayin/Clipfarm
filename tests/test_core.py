@@ -79,3 +79,25 @@ def test_viral_captions_accumulate_and_censor():
     assert len(colors) == len(groups) and starts == [w.start for w in words]
     full = [l for l in text.splitlines() if l.startswith("Dialogue: 2") and "WORLD'S" in l]
     assert full and "YOU" in full[-1] and "KNOW" in full[-1]  # önceki kelimeler ekranda kalıyor
+
+
+def test_story_teaser_cuts_dead_air_and_remaps_words():
+    import numpy as np
+
+    from clipfarm.captions import Word
+    from clipfarm.story import plan_story, remap_words
+
+    # 0-5 sn konuşma, 5-8 sessiz, 8-14 konuşma, 14-16.5 bağırma
+    db = np.full(180, -25.0, dtype=np.float32)
+    db[50:80] = -70
+    db[140:165] = -8
+    words = ([Word(0.5 + i * 0.5, 0.9 + i * 0.5, f"a{i}") for i in range(9)]
+             + [Word(8.2 + i * 0.5, 8.6 + i * 0.5, f"b{i}") for i in range(11)]
+             + [Word(14.2, 14.8, "NO"), Word(15.0, 15.6, "WAY")])
+    segs = plan_story(words, 18.0, db)
+    assert segs[0].start >= 13.5 and segs[0].length <= 3.5  # kanca: bağırma başa
+    assert all(not (s.start < 6.5 < s.end) for s in segs[1:])  # sessiz boşluk kesildi
+    remapped = remap_words(words, segs)
+    assert remapped[0].text == "NO" and remapped[0].start < 0.5
+    assert [w.text for w in remapped[2:4]] == ["a0", "a1"]
+    assert all(b.start >= a.start for a, b in zip(remapped, remapped[1:]))
