@@ -48,6 +48,7 @@ def transcribe(
     language: str | None = None,
     model_size: str = "small",
     device: str = "auto",
+    vad: bool = True,
 ) -> tuple[list[Word], str]:
     """Kelime zaman damgalarıyla konuşmayı yazıya döker. (kelimeler, dil) döner."""
     model = load_model(model_size, device)
@@ -55,7 +56,10 @@ def transcribe(
         str(media),
         language=language,
         word_timestamps=True,
-        vad_filter=True,
+        vad_filter=vad,
+        # kalabalık gürültüsünde VAD konuşmayı sessizce atabiliyor; kapalıyken önceki
+        # metne yaslanmayı da kapatıyoruz ki tekrar eden uydurma satırlar çıkmasın
+        condition_on_previous_text=vad,
     )
     words: list[Word] = []
     for seg in segments:

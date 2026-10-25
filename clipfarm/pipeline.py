@@ -298,7 +298,7 @@ def render_clip(job: Job, clip: Clip) -> None:
     # anahtar kareden başlayabildiği için kayıyordu. Altyazıyı her zaman bu dosyadan çıkarıyoruz.
     if info["has_audio"]:
         job.say(f"{clip.id}: altyazı çıkarılıyor…")
-        words, lang = transcribe(src, language=job.options.lang, model_size=job.options.caption_model)
+        words, lang = transcribe(src, language=job.options.lang, model_size=job.options.caption_model, vad=False)
         clip.words = [asdict(w) for w in words]
         clip.language = lang
     o = job.options
