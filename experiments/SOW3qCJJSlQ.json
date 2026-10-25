@@ -539,6 +539,78 @@
     }
    ],
    "events": []
+  },
+  {
+   "id": "clip10_lost_the_keys",
+   "source_candidate": "25+26",
+   "start": 8932.3,
+   "end": 9070.5,
+   "top": "SPEED LOST HIS KEYS IN A HORROR GAME",
+   "blur": [
+    [
+     0.83,
+     0.0,
+     0.17,
+     0.26
+    ],
+    [
+     0.0,
+     0.26,
+     0.18,
+     0.2
+    ]
+   ],
+   "recipes": [
+    "dead-air cuts (story across 2 min)",
+    "1 punch-in on the scream",
+    "10 build + riser before the shadow figure"
+   ],
+   "timeline": [
+    {
+     "from": 8932.3,
+     "to": 8939.6
+    },
+    {
+     "from": 8944.6,
+     "to": 8949.2
+    },
+    {
+     "from": 8959.6,
+     "to": 8961.4
+    },
+    {
+     "from": 9041.2,
+     "to": 9045.5
+    },
+    {
+     "from": 9062.8,
+     "to": 9070.5
+    }
+   ],
+   "events": [
+    {
+     "t": 8945.0,
+     "type": "punch",
+     "scale": 1.6,
+     "hold": 1.5,
+     "cx": 0.19,
+     "cy": 0.7
+    },
+    {
+     "t": 9062.8,
+     "type": "push",
+     "to_t": 9067.8,
+     "scale": 1.12,
+     "cx": 0.19,
+     "cy": 0.68
+    },
+    {
+     "t": 9066.2,
+     "type": "sfx",
+     "name": "riser",
+     "gain_db": -14
+    }
+   ]
   }
  ]
 }
