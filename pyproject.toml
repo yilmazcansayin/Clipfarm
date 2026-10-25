@@ -28,4 +28,4 @@ clipfarm = "clipfarm.cli:main"
 packages = ["clipfarm"]
 
 [tool.setuptools.package-data]
-clipfarm = ["web/*.html"]
+clipfarm = ["web/*.html", "fonts/*"]

@@ -18,7 +18,7 @@ from pathlib import Path
 
 from . import DEFAULT_PORT, __version__
 from .captions import Style, build_ass, load_words, save_words, transcribe
-from .effects import Effects, effects_filter, find_punches
+from .effects import Effects, effects_filter
 from .pipeline import make_short
 from .render import LAYOUTS, SHORTS_MAX_SECONDS, Layout, probe, render, require_ffmpeg, trim
 from .timeutil import parse_time
@@ -50,6 +50,14 @@ def _add_range(p: argparse.ArgumentParser) -> None:
         "--cookies-from-browser", metavar="TARAYICI",
         help="indirirken tarayıcı çerezlerini kullan (örn. chrome)",
     )
+
+
+def _add_look(p: argparse._ActionsContainer) -> None:
+    p.add_argument("--look", choices=("viral", "classic"), default="viral",
+                   help="viral: ortada harf harf biriken neon altyazı (örnek Shorts tarzı); classic: altta altyazı")
+    p.add_argument("--aspect", choices=("3:4", "9:16"), default="3:4", help="çıktı oranı")
+    p.add_argument("--watermark", help="alt ortada küçük kanal adı, örn. @kanalim")
+    p.add_argument("--no-effects", action="store_true", help="renk canlandırma ve vurgu flaşlarını kapat")
 
 
 def cmd_get(args: argparse.Namespace) -> None:
@@ -98,15 +106,13 @@ def cmd_make(args: argparse.Namespace) -> None:
         layout = Layout(
             mode=args.layout, crop_x=args.crop_x, cam=args.cam,
             cam_height=args.cam_height, zoom=args.zoom,
+            height=1440 if args.aspect == "3:4" else 1920,
         )
         dst = out_dir / f"{name}_short.mp4"
         if args.ass:
             ass_path = Path(args.ass).resolve()
             print("Dikey video oluşturuluyor…")
-            fx = None
-            if not args.no_effects:
-                punches = find_punches(src) if info["has_audio"] else []
-                fx = effects_filter(info["duration"], Effects(punches=punches))
+            fx = None if args.no_effects else effects_filter(Effects())
             render(src, dst, layout, ass_path, fps=args.fps, crf=args.crf, has_audio=info["has_audio"], effects=fx)
         else:
             words, language = [], args.lang or ""
@@ -133,6 +139,7 @@ def cmd_make(args: argparse.Namespace) -> None:
                 src, dst, layout, words, language, info["duration"],
                 hook=args.hook, credit=args.credit, style=style, has_audio=info["has_audio"],
                 fps=args.fps, crf=args.crf, effects=None if args.no_effects else Effects(),
+                look=args.look, watermark=args.watermark,
             )
             ass_path = dst.with_suffix(".ass")
         print(f"\nHazır: {dst}\nAltyazı dosyası: {ass_path}")
@@ -146,6 +153,7 @@ def cmd_auto(args: argparse.Namespace) -> None:
         count=args.count, layout=args.layout, cam=list(args.cam) if args.cam else None,
         cam_height=args.cam_height, crop_x=args.crop_x, model=args.model, lang=args.lang,
         upload=args.upload, privacy=args.privacy, effects=not args.no_effects,
+        look=args.look, aspect=args.aspect, watermark=args.watermark or "",
     )
     job = run_job(Job.new(args.url, opts))
     print()
@@ -208,8 +216,7 @@ def build_parser() -> argparse.ArgumentParser:
     lay.add_argument("--cam", type=_cam, help="split: kamera alanı x,y,w,h oranları")
     lay.add_argument("--cam-height", type=float, default=0.38, help="split: kamera bölümünün yüksekliği")
     lay.add_argument("--zoom", type=float, default=1.0, help="blur: ön videoyu büyüt (örn. 1.3)")
-    lay.add_argument("--no-effects", action="store_true",
-                     help="efektleri kapat (yavaş yakınlaşma, ses tepelerinde zoom + flaş, ilerleme çubuğu)")
+    _add_look(lay)
 
     txt = m.add_argument_group("yazılar")
     txt.add_argument("--hook", help="üstte görünen başlık (izleyiciyi tutan cümle)")
@@ -238,7 +245,7 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("auto", help="uzun yayında en iyi anları bulup Shorts üret (ve isteğe bağlı yükle)")
     a.add_argument("url", help="VOD / video / klip adresi ya da yerel dosya")
     a.add_argument("--count", "-n", type=int, default=5, help="kaç klip")
-    a.add_argument("--layout", "-l", choices=LAYOUTS, default="blur")
+    a.add_argument("--layout", "-l", choices=LAYOUTS, default="crop")
     a.add_argument("--cam", type=_cam)
     a.add_argument("--cam-height", type=float, default=0.38)
     a.add_argument("--crop-x", type=float, default=0.5)
@@ -246,7 +253,7 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--lang", help="konuşma dili (boşsa otomatik)")
     a.add_argument("--upload", action="store_true", help="hazır klipleri YouTube'a yükle")
     a.add_argument("--privacy", choices=("private", "unlisted", "public"), default="private")
-    a.add_argument("--no-effects", action="store_true", help="efektleri kapat")
+    _add_look(a)
     a.set_defaults(func=cmd_auto)
 
     sv = sub.add_parser("serve", help="panel ve Chrome eklentisi için yerel sunucuyu başlat")

@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import Callable
 
 from . import editor, highlights
-from .captions import Style, Word, build_ass, transcribe
-from .effects import Effects, effects_filter, find_punches
+from .captions import Style, Word, build_ass, build_viral_ass, transcribe
+from .effects import Effects, effects_filter, find_punches, plan_flashes
 from .render import Layout, probe, render, trim
 from .youtube import HOME
 
@@ -29,16 +29,20 @@ SHORT_CLIP_SECONDS = 180
 @dataclass
 class Options:
     count: int = 5
-    layout: str = "blur"
+    layout: str = "crop"
     cam: list[float] | None = None
     cam_height: float = 0.38
     crop_x: float = 0.5
-    model: str = "small"
+    model: str = "small"  # aday anları yazıya dökmek için (hızlı)
+    caption_model: str = "medium"  # klibin altyazısı için (hızlı konuşmada daha doğru)
     lang: str | None = None
     ranges: list[list[float]] | None = None  # elle seçilen [başlangıç, bitiş] aralıkları
     upload: bool = False
     privacy: str = "private"
     effects: bool = True
+    look: str = "viral"  # viral: örnek Shorts tarzı ortada birikerek yazılan neon altyazı; classic: alt altyazı + hook kutusu
+    aspect: str = "3:4"  # 3:4 (1080x1440) ya da 9:16 (1080x1920)
+    watermark: str = ""  # alt ortada küçük kanal adı, örn. "@kanalim"
 
 
 @dataclass
@@ -225,21 +229,30 @@ def make_short(
     fps: int = 30,
     crf: int = 20,
     effects: Effects | None = None,
+    look: str = "viral",
+    watermark: str | None = None,
 ) -> Path:
-    """Kaynak klipten altyazılı, başlıklı (isteğe bağlı efektli) dikey video üretir.
-    Altyazı dosyası dst yanına yazılır."""
-    style = style or Style()
-    if layout.mode == "split" and style.position == Style.position:
-        style.position = min(0.9, layout.cam_height + 0.08)
+    """Kaynak klipten altyazılı dikey video üretir. Altyazı dosyası dst yanına yazılır.
+
+    look="viral": örnek Shorts'lardaki gibi ortada harf harf yazılıp biriken neon altyazı,
+    üstte harf harf yazılan hook; efektler (renk + vurgu flaşları) altyazının kelimelerine hizalanır.
+    look="classic": altta kelime kelime vurgulanan altyazı, üstte hook kutusu ve kaynak yazısı.
+    """
     ass_path = dst.with_suffix(".ass")
-    ass_path.write_text(
-        build_ass(words or [], language, duration, style, hook=hook, credit=credit),
-        encoding="utf-8",
-    )
-    if effects is not None and has_audio and not effects.punches:
-        effects.punches = find_punches(src)
-    fx = effects_filter(duration, effects) if effects is not None else None
-    return render(src, dst, layout, ass_path, fps=fps, crf=crf, has_audio=has_audio, effects=fx)
+    if look == "viral":
+        text, colors, starts = build_viral_ass(
+            words or [], language, duration, layout.height, hook=hook, watermark=watermark or None,
+        )
+        if effects is not None and has_audio and not effects.flashes:
+            effects.flashes = plan_flashes(find_punches(src), starts, colors)
+    else:
+        style = style or Style()
+        if layout.mode == "split" and style.position == Style.position:
+            style.position = min(0.9, layout.cam_height + 0.08)
+        text = build_ass(words or [], language, duration, style, hook=hook, credit=credit)
+    ass_path.write_text(text, encoding="utf-8")
+    fx = effects_filter(effects) if effects is not None else None
+    return render(src, dst, layout, ass_path, fps=fps, crf=crf, has_audio=has_audio, effects=fx or None)
 
 
 def render_clip(job: Job, clip: Clip) -> None:
@@ -254,13 +267,18 @@ def render_clip(job: Job, clip: Clip) -> None:
     else:
         src = download(job.url, src_dir, clip.start, clip.end)
     info = probe(src)
-    if not clip.words and info["has_audio"]:
+    # Analizde çıkarılan kelimeler ses-akışının zamanına göre; indirilen video parçası
+    # anahtar kareden başlayabildiği için kayıyordu. Altyazıyı her zaman bu dosyadan çıkarıyoruz.
+    if info["has_audio"]:
         job.say(f"{clip.id}: altyazı çıkarılıyor…")
-        words, lang = transcribe(src, language=job.options.lang, model_size=job.options.model)
+        words, lang = transcribe(src, language=job.options.lang, model_size=job.options.caption_model)
         clip.words = [asdict(w) for w in words]
         clip.language = lang
     o = job.options
-    layout = Layout(mode=o.layout, crop_x=o.crop_x, cam=tuple(o.cam) if o.cam else None, cam_height=o.cam_height)
+    layout = Layout(
+        mode=o.layout, crop_x=o.crop_x, cam=tuple(o.cam) if o.cam else None, cam_height=o.cam_height,
+        height=1440 if o.aspect == "3:4" else 1920,
+    )
     dst = job.dir / f"{clip.id}.mp4"
     make_short(
         src, dst, layout,
@@ -268,7 +286,8 @@ def render_clip(job: Job, clip: Clip) -> None:
         info["duration"], hook=clip.hook or None,
         credit=short_channel(job.stream.get("channel_url", "")) or None,
         has_audio=info["has_audio"],
-        effects=Effects() if getattr(o, "effects", True) else None,
+        effects=Effects() if o.effects else None,
+        look=o.look, watermark=o.watermark,
     )
     clip.file = dst.name
     clip.status = "ready"

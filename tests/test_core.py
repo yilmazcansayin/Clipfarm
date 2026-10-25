@@ -55,13 +55,27 @@ def test_video_filter_ends_with_v(mode):
     assert graph.endswith("[v]")
 
 
-def test_effects_filter_has_zoom_flash_and_bar():
-    from clipfarm.effects import Effects, effects_filter
+def test_effects_filter_grade_and_flashes():
+    from clipfarm.effects import Effects, Flash, effects_filter, plan_flashes
 
-    fx = effects_filter(20.0, Effects(punches=[3.0, 9.5]))
-    assert "eval=frame" in fx and "crop=1080:1920" in fx
-    assert "gte(t,3)" in fx and "gte(t,9.5)" in fx
-    assert "between(t,3,3.07)+between(t,9.5,9.57)" in fx
-    assert "drawbox" in fx and "iw*t/20" in fx
-    plain = effects_filter(20.0, Effects(drift=0, punches=[], progress_bar=False))
-    assert "scale" not in plain and "drawbox" not in plain
+    flashes = plan_flashes([3.1, 9.0], word_starts=[1.0, 2.9, 9.6], colors=["00E5FF", "39FF14"])
+    assert [(f.t, f.kind) for f in flashes] == [(2.9, "tint"), (9.0, "bw")]
+    fx = effects_filter(Effects(flashes=flashes + [Flash(12.0, "white")]))
+    assert "eq=saturation" in fx and "0x00E5FF@0.45" in fx and "between(t,2.9,3.02)" in fx
+    assert "hue=s=0:enable='between(t,9,9.3)'" in fx and "eq=brightness=0.3" in fx
+    assert effects_filter(Effects(grade=False)) == ""
+
+
+def test_viral_captions_accumulate_and_censor():
+    from clipfarm.captions import Word, build_viral_ass, censor, group_words
+
+    assert censor("that fucking ass") == "that f**king a*s"
+    words = [Word(i * 0.4, i * 0.4 + 0.3, t) for i, t in enumerate("you know this is the world's biggest".split())]
+    groups = group_words(words)
+    assert sum(len(line) for g in groups for line in g) == len(words)
+    assert all(len(g) <= 2 for g in groups)
+    text, colors, starts = build_viral_ass(words, "en", 4.0, 1440, hook="Speed wins")
+    assert "PlayResY: 1440" in text and "Montserrat Black" in text
+    assert len(colors) == len(groups) and starts == [w.start for w in words]
+    full = [l for l in text.splitlines() if l.startswith("Dialogue: 2") and "WORLD'S" in l]
+    assert full and "YOU" in full[-1] and "KNOW" in full[-1]  # önceki kelimeler ekranda kalıyor

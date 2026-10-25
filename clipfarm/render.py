@@ -11,6 +11,7 @@ from pathlib import Path
 from .captions import HEIGHT, WIDTH
 
 LAYOUTS = ("blur", "crop", "split")
+FONTS_DIR = Path(__file__).parent / "fonts"
 SHORTS_MAX_SECONDS = 180
 
 
@@ -21,6 +22,7 @@ class Layout:
     cam: tuple[float, float, float, float] | None = None  # split: kamera alanı x,y,w,h (0-1)
     cam_height: float = 0.38  # split: üstteki kamera bölümünün ekran oranı
     zoom: float = 1.0  # blur: öndeki videoyu büyütme (1.0 = tam genişlik)
+    height: int = HEIGHT  # çıktı yüksekliği: 1920 (9:16) ya da 1440 (3:4, örnek Shorts'lardaki gibi)
 
 
 def require_ffmpeg() -> None:
@@ -58,7 +60,7 @@ def _even(n: float) -> int:
 
 def video_filter(layout: Layout) -> str:
     """Kaynağı 1080x1920 dikey kareye dönüştüren filter_complex ([0:v] -> [v])."""
-    W, H = WIDTH, HEIGHT
+    W, H = WIDTH, layout.height
     if layout.mode == "blur":
         fg_w = _even(W * layout.zoom)
         return (
@@ -119,8 +121,14 @@ def render(
         graph = graph[: -len("[v]")] + f",{effects}[v]"
     if ass_file is not None:
         # Windows'ta sürücü harfi (C:) filtre sözdizimini bozduğu için ffmpeg'i ASS
-        # dosyasının klasöründe çalıştırıp yalnızca dosya adını veriyoruz.
-        graph = graph[: -len("[v]")] + f",ass={ass_file.name}[v]"
+        # dosyasının klasöründe çalıştırıp yalnızca dosya adını veriyoruz. Paketteki yazı
+        # tipleri de aynı klasöre "fonts" olarak kopyalanır.
+        fonts = ass_file.parent / "fonts"
+        fonts.mkdir(exist_ok=True)
+        for f in FONTS_DIR.glob("*.ttf"):
+            if not (fonts / f.name).exists():
+                shutil.copy(f, fonts / f.name)
+        graph = graph[: -len("[v]")] + f",ass={ass_file.name}:fontsdir=fonts[v]"
     graph = graph[: -len("[v]")] + f",fps={fps},format=yuv420p[v]"
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",

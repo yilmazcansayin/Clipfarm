@@ -1,6 +1,7 @@
-"""Shorts düzenleme efektleri: yavaş yakınlaşma, ses tepelerinde zoom vuruşu + flaş, ilerleme çubuğu.
+"""Örnek Shorts'lardaki görünüm: canlı renk + vurgulu anlarda kısa renk flaşı / siyah-beyaz kare.
 
-Efektler dikey (1080x1920) kareye, altyazı yakılmadan önce uygulanır; böylece yazılar sabit kalır.
+Efektler dikey kareye, altyazı yakılmadan önce uygulanır; yazılar etkilenmez. Flaşlar
+rastgele değil: sesin ani yükseldiği anlara konur ve o anda başlayan kelimeye hizalanır.
 """
 
 from __future__ import annotations
@@ -11,24 +12,26 @@ from pathlib import Path
 
 import numpy as np
 
-from .captions import HEIGHT, WIDTH
-
 RATE = 8000
 WINDOW = 0.1  # sn; tepe bulma çözünürlüğü
+FLASH_KINDS = ("tint", "bw", "white")
+FLASH_SECONDS = {"tint": 0.12, "bw": 0.3, "white": 0.15}
+
+
+@dataclass
+class Flash:
+    t: float
+    kind: str = "tint"  # tint: renkli perde, bw: siyah-beyaz, white: aşırı pozlama
+    color: str = "39FF14"  # tint rengi (RRGGBB)
 
 
 @dataclass
 class Effects:
-    drift: float = 0.06  # klip boyunca toplam yavaş yakınlaşma oranı
-    punch: float = 0.12  # vuruş anında ek yakınlaşma
-    punch_seconds: float = 0.45  # vuruşun sönme süresi
-    flash: float = 0.18  # vuruş anındaki parlaklık artışı (0 = kapalı)
-    progress_bar: bool = True
-    bar_color: str = "FFE500"
-    punches: list[float] = field(default_factory=list)  # klibe göre göreli vuruş anları (sn)
+    grade: bool = True  # canlı renk + hafif keskinlik
+    flashes: list[Flash] = field(default_factory=list)
 
 
-def find_punches(media: Path, max_count: int = 6, min_gap: float = 2.5, skip_start: float = 0.6) -> list[float]:
+def find_punches(media: Path, max_count: int = 3, min_gap: float = 6.0, skip_start: float = 1.0) -> list[float]:
     """Klibin sesindeki ani yükselmeleri (bağırma, gülme, patlama) bulur."""
     proc = subprocess.run(
         ["ffmpeg", "-v", "error", "-i", str(media), "-vn", "-ac", "1", "-ar", str(RATE), "-f", "s16le", "-"],
@@ -47,44 +50,45 @@ def find_punches(media: Path, max_count: int = 6, min_gap: float = 2.5, skip_sta
     prev = np.convolve(db, np.ones(10) / 10, mode="full")[: len(db)]
     prev = np.concatenate([[db[0]], prev[:-1]])
     rise = db - prev
-    loud_enough = db > np.percentile(db, 70)
-    threshold = max(6.0, float(np.mean(rise) + 1.5 * np.std(rise)))
-    order = np.argsort(-rise)
+    loud_enough = db > np.percentile(db, 80)
+    threshold = max(8.0, float(np.mean(rise) + 2 * np.std(rise)))
     picked: list[float] = []
-    for i in order:
+    for i in np.argsort(-rise):
         if rise[i] < threshold or len(picked) >= max_count:
             break
         t = i * WINDOW
         if t < skip_start or not loud_enough[i] or any(abs(t - p) < min_gap for p in picked):
             continue
-        picked.append(round(t, 2))
+        picked.append(round(float(t), 2))
     return sorted(picked)
+
+
+def plan_flashes(peaks: list[float], word_starts: list[float], colors: list[str]) -> list[Flash]:
+    """Ses tepelerini en yakın kelime başlangıcına hizalayıp sırayla farklı flaş türleri atar."""
+    flashes = []
+    for i, p in enumerate(peaks):
+        near = [w for w in word_starts if abs(w - p) <= 0.35]
+        t = min(near, key=lambda w: abs(w - p)) if near else p
+        flashes.append(Flash(round(t, 2), FLASH_KINDS[i % len(FLASH_KINDS)], colors[i % len(colors)] if colors else "39FF14"))
+    return flashes
 
 
 def _num(x: float) -> str:
     return f"{x:.3f}".rstrip("0").rstrip(".") or "0"
 
 
-def effects_filter(duration: float, fx: Effects) -> str:
-    """[v] zincirine eklenecek filtreler (virgülle ayrılmış, etiket yok)."""
-    d = max(duration, 0.1)
-    zoom = f"1+{_num(fx.drift)}*t/{_num(d)}" if fx.drift else "1"
-    for p in fx.punches:
-        # vuruş anında hızla büyür, punch_seconds içinde doğrusal olarak söner
-        zoom += f"+{_num(fx.punch)}*gte(t,{_num(p)})*max(0,1-(t-{_num(p)})/{_num(fx.punch_seconds)})"
+def effects_filter(fx: Effects) -> str:
+    """[v] zincirine eklenecek filtreler (virgülle ayrılmış, etiket yok). Boşsa ''."""
     parts = []
-    if zoom != "1":
-        parts.append(
-            f"scale=w='2*trunc({WIDTH // 2}*({zoom}))':h='2*trunc({HEIGHT // 2}*({zoom}))'"
-            ":eval=frame:flags=bicubic"
-        )
-        parts.append(f"crop={WIDTH}:{HEIGHT}")
-    if fx.flash and fx.punches:
-        when = "+".join(f"between(t,{_num(p)},{_num(p + 0.07)})" for p in fx.punches)
-        parts.append(f"eq=brightness={_num(fx.flash)}:enable='{when}'")
-    parts.append("eq=saturation=1.12:contrast=1.04")
-    if fx.progress_bar:
-        parts.append(
-            f"drawbox=x=0:y=ih-14:w='iw*t/{_num(d)}':h=14:color=0x{fx.bar_color}@0.9:t=fill"
-        )
+    if fx.grade:
+        parts.append("eq=saturation=1.22:contrast=1.06:brightness=0.02")
+        parts.append("unsharp=5:5:0.5:5:5:0")
+    for f in fx.flashes:
+        when = f"between(t,{_num(f.t)},{_num(f.t + FLASH_SECONDS[f.kind])})"
+        if f.kind == "tint":
+            parts.append(f"drawbox=x=0:y=0:w=iw:h=ih:color=0x{f.color}@0.45:t=fill:enable='{when}'")
+        elif f.kind == "bw":
+            parts.append(f"hue=s=0:enable='{when}'")
+        else:
+            parts.append(f"eq=brightness=0.3:saturation=0.5:enable='{when}'")
     return ",".join(parts)
