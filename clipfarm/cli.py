@@ -18,6 +18,7 @@ from pathlib import Path
 
 from . import DEFAULT_PORT, __version__
 from .captions import Style, build_ass, load_words, save_words, transcribe
+from .effects import Effects, effects_filter, find_punches
 from .pipeline import make_short
 from .render import LAYOUTS, SHORTS_MAX_SECONDS, Layout, probe, render, require_ffmpeg, trim
 from .timeutil import parse_time
@@ -102,7 +103,11 @@ def cmd_make(args: argparse.Namespace) -> None:
         if args.ass:
             ass_path = Path(args.ass).resolve()
             print("Dikey video oluşturuluyor…")
-            render(src, dst, layout, ass_path, fps=args.fps, crf=args.crf, has_audio=info["has_audio"])
+            fx = None
+            if not args.no_effects:
+                punches = find_punches(src) if info["has_audio"] else []
+                fx = effects_filter(info["duration"], Effects(punches=punches))
+            render(src, dst, layout, ass_path, fps=args.fps, crf=args.crf, has_audio=info["has_audio"], effects=fx)
         else:
             words, language = [], args.lang or ""
             words_path = out_dir / f"{name}.words.json"
@@ -127,7 +132,7 @@ def cmd_make(args: argparse.Namespace) -> None:
             make_short(
                 src, dst, layout, words, language, info["duration"],
                 hook=args.hook, credit=args.credit, style=style, has_audio=info["has_audio"],
-                fps=args.fps, crf=args.crf,
+                fps=args.fps, crf=args.crf, effects=None if args.no_effects else Effects(),
             )
             ass_path = dst.with_suffix(".ass")
         print(f"\nHazır: {dst}\nAltyazı dosyası: {ass_path}")
@@ -140,7 +145,7 @@ def cmd_auto(args: argparse.Namespace) -> None:
     opts = Options(
         count=args.count, layout=args.layout, cam=list(args.cam) if args.cam else None,
         cam_height=args.cam_height, crop_x=args.crop_x, model=args.model, lang=args.lang,
-        upload=args.upload, privacy=args.privacy,
+        upload=args.upload, privacy=args.privacy, effects=not args.no_effects,
     )
     job = run_job(Job.new(args.url, opts))
     print()
@@ -203,6 +208,8 @@ def build_parser() -> argparse.ArgumentParser:
     lay.add_argument("--cam", type=_cam, help="split: kamera alanı x,y,w,h oranları")
     lay.add_argument("--cam-height", type=float, default=0.38, help="split: kamera bölümünün yüksekliği")
     lay.add_argument("--zoom", type=float, default=1.0, help="blur: ön videoyu büyüt (örn. 1.3)")
+    lay.add_argument("--no-effects", action="store_true",
+                     help="efektleri kapat (yavaş yakınlaşma, ses tepelerinde zoom + flaş, ilerleme çubuğu)")
 
     txt = m.add_argument_group("yazılar")
     txt.add_argument("--hook", help="üstte görünen başlık (izleyiciyi tutan cümle)")
@@ -239,6 +246,7 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--lang", help="konuşma dili (boşsa otomatik)")
     a.add_argument("--upload", action="store_true", help="hazır klipleri YouTube'a yükle")
     a.add_argument("--privacy", choices=("private", "unlisted", "public"), default="private")
+    a.add_argument("--no-effects", action="store_true", help="efektleri kapat")
     a.set_defaults(func=cmd_auto)
 
     sv = sub.add_parser("serve", help="panel ve Chrome eklentisi için yerel sunucuyu başlat")

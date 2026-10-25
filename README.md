@@ -88,6 +88,8 @@ Chrome'da bir yayın kaydı (YouTube videosu/canlı yayın kaydı, Twitch VOD, K
 
 Klipler panelde (`http://127.0.0.1:38765`) görünür. Her klip için videoyu izleyin; hook, başlık, açıklama ve etiketleri düzenleyin. Hook değiştiyse **Yeniden üret**, beğendiyseniz **Yükle**'ye basın. Yeni iş oluştururken "Hazır olunca YouTube'a otomatik yükle" kutusunu işaretlerseniz onay beklemeden yüklenir (varsayılan görünürlük: Özel).
 
+Her klipte varsayılan efektler var: klip boyunca yavaş yakınlaşma, sesin ani yükseldiği anlarda (bağırma, gülme) zoom vuruşu ve kısa flaş, canlı renk, altta ilerleme çubuğu, kelime kelime "pop" yapan altyazı ve büyüyerek gelen başlık. Kapatmak için `--no-effects`.
+
 Canlı yayın sürerken analiz yapılmaz; yayın bitince kaydın (VOD) adresini kullanın.
 
 ### Düzenler

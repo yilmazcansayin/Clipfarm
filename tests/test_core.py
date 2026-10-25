@@ -53,3 +53,15 @@ def test_build_ass_has_hook_credit_and_highlight():
 def test_video_filter_ends_with_v(mode):
     graph = video_filter(Layout(mode=mode, cam=(0.7, 0, 0.3, 0.3)))
     assert graph.endswith("[v]")
+
+
+def test_effects_filter_has_zoom_flash_and_bar():
+    from clipfarm.effects import Effects, effects_filter
+
+    fx = effects_filter(20.0, Effects(punches=[3.0, 9.5]))
+    assert "eval=frame" in fx and "crop=1080:1920" in fx
+    assert "gte(t,3)" in fx and "gte(t,9.5)" in fx
+    assert "between(t,3,3.07)+between(t,9.5,9.57)" in fx
+    assert "drawbox" in fx and "iw*t/20" in fx
+    plain = effects_filter(20.0, Effects(drift=0, punches=[], progress_bar=False))
+    assert "scale" not in plain and "drawbox" not in plain

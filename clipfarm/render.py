@@ -111,9 +111,12 @@ def render(
     fps: int = 30,
     crf: int = 20,
     has_audio: bool = True,
+    effects: str | None = None,
 ) -> Path:
-    """Dikey düzen + yakılmış altyazı ile son Shorts videosunu üretir."""
+    """Dikey düzen + efektler + yakılmış altyazı ile son Shorts videosunu üretir."""
     graph = video_filter(layout)
+    if effects:
+        graph = graph[: -len("[v]")] + f",{effects}[v]"
     if ass_file is not None:
         # Windows'ta sürücü harfi (C:) filtre sözdizimini bozduğu için ffmpeg'i ASS
         # dosyasının klasöründe çalıştırıp yalnızca dosya adını veriyoruz.

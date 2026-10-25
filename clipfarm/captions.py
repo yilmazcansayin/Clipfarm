@@ -164,7 +164,9 @@ def build_ass(
 
     if hook:
         hook_end = duration if not hook_seconds else min(duration, hook_seconds)
-        lines.append(event(0, hook_end, "Hook", _escape(hook), layer=2))
+        # açılışta küçükten büyüyerek gelir
+        pop_in = "{\\fad(150,0)\\fscx70\\fscy70\\t(0,220,\\fscx100\\fscy100)}"
+        lines.append(event(0, hook_end, "Hook", pop_in + _escape(hook), layer=2))
     if credit:
         lines.append(event(0, duration, "Credit", _escape(credit), layer=1))
 
@@ -179,7 +181,8 @@ def build_ass(
             for j, other in enumerate(chunk):
                 token = fmt(other.text)
                 if j == i:
-                    token = f"{{\\c{hl}\\fscx108\\fscy108}}{token}{{\\r}}"
+                    # konuşulan kelime büyük başlayıp yerine oturur (pop)
+                    token = f"{{\\c{hl}\\fscx125\\fscy125\\t(0,90,\\fscx108\\fscy108)}}{token}{{\\r}}"
                 parts.append(token)
             lines.append(event(start, end, "Caption", " ".join(parts)))
     return "\n".join(lines) + "\n"

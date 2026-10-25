@@ -18,6 +18,7 @@ from typing import Callable
 
 from . import editor, highlights
 from .captions import Style, Word, build_ass, transcribe
+from .effects import Effects, effects_filter, find_punches
 from .render import Layout, probe, render, trim
 from .youtube import HOME
 
@@ -37,6 +38,7 @@ class Options:
     ranges: list[list[float]] | None = None  # elle seçilen [başlangıç, bitiş] aralıkları
     upload: bool = False
     privacy: str = "private"
+    effects: bool = True
 
 
 @dataclass
@@ -221,8 +223,10 @@ def make_short(
     has_audio: bool = True,
     fps: int = 30,
     crf: int = 20,
+    effects: Effects | None = None,
 ) -> Path:
-    """Kaynak klipten altyazılı, başlıklı dikey video üretir. Altyazı dosyası dst yanına yazılır."""
+    """Kaynak klipten altyazılı, başlıklı (isteğe bağlı efektli) dikey video üretir.
+    Altyazı dosyası dst yanına yazılır."""
     style = style or Style()
     if layout.mode == "split" and style.position == Style.position:
         style.position = min(0.9, layout.cam_height + 0.08)
@@ -231,7 +235,10 @@ def make_short(
         build_ass(words or [], language, duration, style, hook=hook, credit=credit),
         encoding="utf-8",
     )
-    return render(src, dst, layout, ass_path, fps=fps, crf=crf, has_audio=has_audio)
+    if effects is not None and has_audio and not effects.punches:
+        effects.punches = find_punches(src)
+    fx = effects_filter(duration, effects) if effects is not None else None
+    return render(src, dst, layout, ass_path, fps=fps, crf=crf, has_audio=has_audio, effects=fx)
 
 
 def render_clip(job: Job, clip: Clip) -> None:
@@ -260,6 +267,7 @@ def render_clip(job: Job, clip: Clip) -> None:
         info["duration"], hook=clip.hook or None,
         credit=short_channel(job.stream.get("channel_url", "")) or None,
         has_audio=info["has_audio"],
+        effects=Effects() if getattr(o, "effects", True) else None,
     )
     clip.file = dst.name
     clip.status = "ready"
