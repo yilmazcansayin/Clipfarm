@@ -215,7 +215,7 @@ def censor(text: str) -> str:
     return re.sub(pattern, repl, text)
 
 
-def group_words(words: list[Word], max_line_chars: int = 15, max_gap: float = 0.8) -> list[list[list[Word]]]:
+def group_words(words: list[Word], max_line_chars: int = 16, max_gap: float = 0.8) -> list[list[list[Word]]]:
     """Kelimeleri ekranda birlikte birikecek gruplara (en fazla 2 satır) böler."""
     groups: list[list[list[Word]]] = []
     lines: list[list[Word]] = [[]]
@@ -252,7 +252,7 @@ def build_viral_ass(
     hook: str | None = None,
     watermark: str | None = None,
     font: str = FONT,
-    size: int = 66,
+    size: int = 88,
     position: float = 0.52,
     typing_step: float = 0.03,
 ) -> tuple[str, list[str], list[float]]:
@@ -289,12 +289,12 @@ def build_viral_ass(
         if not color:
             return f"{{\\3c&H000000&\\3a&H60&}}{text}"
         c = _ass_color(color).replace("&H00", "&H", 1) + "&"
-        return f"{{\\3c{c}\\3a&H30&}}{text}"
+        return f"{{\\3c{c}\\3a&H58&}}{text}"
 
     def both(pos: str, rows: list[list[tuple[str, str | None]]], start: float, end: float, layer: int) -> None:
         main = "\\N".join(" ".join(colored(t, c) for t, c in r) for r in rows if r)
         glow = "\\N".join(" ".join(glowed(t, c) for t, c in r) for r in rows if r)
-        ev(start, end, f"{{{pos}\\1a&HFF&\\bord12\\blur10}}" + glow, layer=layer)
+        ev(start, end, f"{{{pos}\\1a&HFF&\\bord5\\blur7}}" + glow, layer=layer)
         ev(start, end, f"{{{pos}\\bord3\\blur0.8}}" + main, layer=layer + 1)
 
     if hook:
@@ -309,7 +309,7 @@ def build_viral_ass(
                 row = [(hook_text[:i], None)]
             t0 = (i - 1) * 0.035
             t1 = duration if i == len(hook_text) else i * 0.035
-            both(f"\\an8\\pos({W // 2},{hy})\\fs{int(size * 0.85)}", [row], t0, t1, layer=3)
+            both(f"\\an8\\q0\\pos({W // 2},{hy})\\fs{int(size * 0.75)}", [row], t0, t1, layer=3)
 
     if watermark:
         ev(0, duration, _escape(watermark), style="Mark", layer=0)
