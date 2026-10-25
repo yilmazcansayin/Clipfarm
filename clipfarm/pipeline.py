@@ -170,7 +170,8 @@ def _download_audio_and_chat(job: Job) -> tuple[Path, Path | None]:
     out.mkdir(parents=True, exist_ok=True)
     opts = {
         "outtmpl": str(out / "stream.%(ext)s"),
-        "format": "worstaudio/bestaudio/worst",
+        # HLS (m3u8) ses parçaları eksik gelebiliyor; o zaman zamanlar kayar. Doğrudan https dosyası tercih edilir.
+        "format": "bestaudio[protocol=https]/bestaudio[protocol=http]/bestaudio/worst",
         "noplaylist": True,
         "quiet": True,
         "writesubtitles": True,
@@ -181,6 +182,11 @@ def _download_audio_and_chat(job: Job) -> tuple[Path, Path | None]:
         info = ydl.extract_info(job.url, download=True)
     audio = Path(info["requested_downloads"][0]["filepath"])
     chat = next((p for p in out.iterdir() if p.suffix == ".json"), None)
+    expected = float(job.stream.get("duration") or info.get("duration") or 0)
+    got = probe(audio)["duration"]
+    if expected and abs(got - expected) > max(5.0, expected * 0.005):
+        job.say(f"UYARI: analiz sesi {got:.0f} sn, yayın {expected:.0f} sn; aday zamanları kayabilir. "
+                "Altyazılar indirilen klipten yeniden çıkarıldığı için senkron bozulmaz, ama klip sınırlarını kontrol edin.")
     return audio, chat
 
 
