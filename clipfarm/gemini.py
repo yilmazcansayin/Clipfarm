@@ -15,8 +15,13 @@ from pathlib import Path
 
 API = "https://generativelanguage.googleapis.com/v1beta/models"
 TEXT_MODEL = os.environ.get("CLIPFARM_GEMINI_TEXT_MODEL", "gemini-2.5-flash")
-TTS_MODEL = os.environ.get("CLIPFARM_TTS_MODEL", "gemini-2.5-flash-preview-tts")
-VOICE = os.environ.get("CLIPFARM_TTS_VOICE", "Puck")
+# Ücretsiz kota model başına günde ~10 istek; 429 alınca sıradaki modele geçilir.
+TTS_MODELS = [m.strip() for m in os.environ.get(
+    "CLIPFARM_TTS_MODEL",
+    "gemini-3.8-flash-tts,gemini-3.8-flash-lite-tts,gemini-3.1-flash-tts-preview,"
+    "gemini-2.5-flash-preview-tts,gemini-2.5-pro-preview-tts",
+).split(",") if m.strip()]
+VOICE = os.environ.get("CLIPFARM_TTS_VOICE", "Charon")  # kullanıcının seçtiği: sakin, hikâye anlatıcısı
 TTS_RATE = 24000  # Gemini TTS: 24 kHz, 16 bit, tek kanal PCM
 
 
@@ -56,15 +61,28 @@ def summarize(transcript: str, streamer: str = "", title: str = "") -> str:
     return text.strip('"').splitlines()[0].strip()
 
 
-def speak(text: str, dst: Path, voice: str | None = None, style: str = "Say in an energetic, hyped storyteller voice") -> Path:
-    """Metni seslendirip 48 kHz WAV olarak kaydeder."""
-    data = _call(TTS_MODEL, {
+def speak(text: str, dst: Path, voice: str | None = None, style: str = "Say like a calm, engaging storyteller") -> Path:
+    """Metni seslendirip 48 kHz WAV olarak kaydeder. Kota dolunca (429) sıradaki modeli dener."""
+    import urllib.error
+
+    body = {
         "contents": [{"parts": [{"text": f"{style}: {text}"}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice or VOICE}}},
         },
-    })
+    }
+    errors = []
+    for model in TTS_MODELS:
+        try:
+            data = _call(model, body)
+            break
+        except urllib.error.HTTPError as exc:
+            errors.append(f"{model}: HTTP {exc.code}")
+            if exc.code not in (404, 429):
+                raise
+    else:
+        raise RuntimeError("Hiçbir Gemini ses modeli yanıt vermedi (" + ", ".join(errors) + ")")
     part = next(p for p in data["candidates"][0]["content"]["parts"] if "inlineData" in p)
     pcm = base64.b64decode(part["inlineData"]["data"])
     raw = dst.with_suffix(".pcm")
