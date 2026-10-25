@@ -58,7 +58,7 @@ def _add_look(p: argparse._ActionsContainer) -> None:
     p.add_argument("--aspect", choices=("3:4", "9:16"), default="3:4", help="çıktı oranı")
     p.add_argument("--watermark", help="alt ortada küçük kanal adı, örn. @kanalim")
     p.add_argument("--effects", action="store_true", help="renk canlandırma ve vurgu flaşlarını aç (varsayılan kapalı)")
-    p.add_argument("--no-story", action="store_true", help="kurgu yapma (başa kanca koyma, ölü anları kesme)")
+    p.add_argument("--story", action="store_true", help="kurguyla hikâyeleştir (başa kanca, ölü anları kes); varsayılan kapalı")
     p.add_argument("--accent", default="FFE500", help="altyazı vurgu rengi RRGGBB; 'multi' = her cümlede farklı renk")
 
 
@@ -141,7 +141,7 @@ def cmd_make(args: argparse.Namespace) -> None:
                 src, dst, layout, words, language, info["duration"],
                 hook=args.hook, credit=args.credit, style=style, has_audio=info["has_audio"],
                 fps=args.fps, crf=args.crf, effects=Effects() if args.effects else None,
-                look=args.look, watermark=args.watermark, story=not args.no_story,
+                look=args.look, watermark=args.watermark, story=args.story,
                 accent=None if args.accent == "multi" else args.accent,
             )
             ass_path = dst.with_suffix(".ass")
@@ -157,7 +157,7 @@ def cmd_auto(args: argparse.Namespace) -> None:
         cam_height=args.cam_height, crop_x=args.crop_x, model=args.model, lang=args.lang,
         upload=args.upload, privacy=args.privacy, effects=args.effects,
         look=args.look, aspect=args.aspect, watermark=args.watermark or "",
-        story=not args.no_story, accent="" if args.accent == "multi" else args.accent,
+        story=args.story, accent="" if args.accent == "multi" else args.accent, intro=not args.no_intro,
     )
     job = run_job(Job.new(args.url, opts))
     print()
@@ -249,7 +249,8 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("auto", help="uzun yayında en iyi anları bulup Shorts üret (ve isteğe bağlı yükle)")
     a.add_argument("url", help="VOD / video / klip adresi ya da yerel dosya")
     a.add_argument("--count", "-n", type=int, default=5, help="kaç klip")
-    a.add_argument("--layout", "-l", choices=LAYOUTS, default="crop")
+    a.add_argument("--layout", "-l", choices=LAYOUTS, default="blur")
+    a.add_argument("--no-intro", action="store_true", help="baştaki Gemini anlatımını kapat")
     a.add_argument("--cam", type=_cam)
     a.add_argument("--cam-height", type=float, default=0.38)
     a.add_argument("--crop-x", type=float, default=0.5)

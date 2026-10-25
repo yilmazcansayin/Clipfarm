@@ -215,14 +215,17 @@ def censor(text: str) -> str:
     return re.sub(pattern, repl, text)
 
 
-def group_words(words: list[Word], max_line_chars: int = 16, max_gap: float = 0.8) -> list[list[list[Word]]]:
+def group_words(
+    words: list[Word], max_line_chars: int = 16, max_gap: float = 0.8, break_at: float | None = None,
+) -> list[list[list[Word]]]:
     """Kelimeleri ekranda birlikte birikecek gruplara (en fazla 2 satır) böler."""
     groups: list[list[list[Word]]] = []
     lines: list[list[Word]] = [[]]
     for w in words:
         cur = lines[-1]
         prev = cur[-1] if cur else (lines[0][-1] if lines[0] else None)
-        if prev is not None and (w.start - prev.end > max_gap or prev.text[-1:] in ".!?…"):
+        forced = break_at is not None and prev is not None and prev.start < break_at <= w.start
+        if prev is not None and (w.start - prev.end > max_gap or prev.text[-1:] in ".!?…" or forced):
             groups.append(lines)
             lines = [[]]
             cur = lines[-1]
@@ -256,6 +259,7 @@ def build_viral_ass(
     position: float = 0.52,
     typing_step: float = 0.03,
     accent: str | None = "FFE500",
+    break_at: float | None = None,
 ) -> tuple[str, list[str], list[float]]:
     """ASS metni, grup renkleri ve kelime başlangıçlarını döner (flaşları kelimeye hizalamak için)."""
     W, H = WIDTH, height
@@ -317,7 +321,7 @@ def build_viral_ass(
 
     colors: list[str] = []
     starts: list[float] = []
-    groups = group_words(words)
+    groups = group_words(words, break_at=break_at)
     for gi, group in enumerate(groups):
         color = accent or PALETTE[gi % len(PALETTE)]  # tek renk (varsayılan) ya da her cümlede değişen palet
         colors.append(color)

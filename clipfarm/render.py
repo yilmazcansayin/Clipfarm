@@ -115,19 +115,34 @@ def render(
     has_audio: bool = True,
     effects: str | None = None,
     segments: list | None = None,
+    intro_audio: Path | None = None,
+    intro_seconds: float = 0.0,
 ) -> Path:
     """Dikey düzen + (isteğe bağlı) efektler + yakılmış altyazı ile son Shorts videosunu üretir.
 
     segments verilirse kaynaktan yalnızca bu parçalar sırayla alınıp birleştirilir (kurgu).
     """
-    graph = video_filter(layout)
-    audio_map = "0:a:0"
+    graph = video_filter(layout)  # [0:v] -> [v]
+    pre: list[str] = []  # düzenden önce çalışan filtreler
+    vin, ain = "[0:v]", "[0:a]"
     if segments:
         from .story import concat_filter
 
-        head, vlabel, alabel = concat_filter(segments, has_audio)
-        graph = head + ";" + graph.replace("[0:v]", vlabel, 1)
-        audio_map = alabel or audio_map
+        head, vin, alabel = concat_filter(segments, has_audio)
+        pre.append(head)
+        ain = alabel or ain
+    with_intro = intro_audio is not None and intro_seconds > 0
+    if with_intro:
+        # anlatım süresince klibin ilk karesi durur; anlatım bitince klip kendi sesiyle başlar
+        pre.append(f"{vin}tpad=start_duration={intro_seconds:.3f}:start_mode=clone[pv]")
+        vin = "[pv]"
+        fmt = "aformat=sample_rates=48000:channel_layouts=stereo"
+        pre.append(f"[1:a]{fmt},apad=whole_dur={intro_seconds:.3f}[na]")
+        pre.append(f"{ain}{fmt}[ka]")
+        pre.append("[na][ka]concat=n=2:v=0:a=1[aout]")
+        ain = "[aout]"
+    graph = ";".join(pre + [graph.replace("[0:v]", vin, 1)])
+    audio_map = ain if ain != "[0:a]" else "0:a:0"
     if effects:
         graph = graph[: -len("[v]")] + f",{effects}[v]"
     if ass_file is not None:
@@ -144,6 +159,7 @@ def render(
     cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
         "-i", str(src.resolve()),
+        *(["-i", str(Path(intro_audio).resolve())] if with_intro else []),
         "-filter_complex", graph,
         "-map", "[v]",
     ]

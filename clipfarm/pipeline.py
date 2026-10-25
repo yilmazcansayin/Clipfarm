@@ -30,7 +30,7 @@ SHORT_CLIP_SECONDS = 180
 @dataclass
 class Options:
     count: int = 5
-    layout: str = "crop"
+    layout: str = "blur"
     cam: list[float] | None = None
     cam_height: float = 0.38
     crop_x: float = 0.5
@@ -41,7 +41,8 @@ class Options:
     upload: bool = False
     privacy: str = "private"
     effects: bool = False  # renk canlandırma + flaşlar (kullanıcı istemedi, varsayılan kapalı)
-    story: bool = True  # kurguyla hikâyeleştir: başa kanca, ölü anları kes
+    story: bool = False  # kurguyla hikâyeleştir: başa kanca, ölü anları kes (kullanıcı kesintisiz istedi)
+    intro: bool = True  # başta Gemini sesiyle klibi anlatan tek cümle, sonra klip
     accent: str = "FFE500"  # altyazı vurgu rengi; boş = her cümlede değişen palet
     look: str = "viral"  # viral: örnek Shorts tarzı ortada birikerek yazılan neon altyazı; classic: alt altyazı + hook kutusu
     aspect: str = "3:4"  # 3:4 (1080x1440) ya da 9:16 (1080x1920)
@@ -65,6 +66,7 @@ class Clip:
     status: str = "planned"  # planned, rendering, ready, uploading, uploaded, failed
     youtube_url: str = ""
     error: str = ""
+    intro: str = ""  # başta seslendirilen özet cümle
 
 
 @dataclass
@@ -236,6 +238,8 @@ def make_short(
     watermark: str | None = None,
     story: bool = False,
     accent: str | None = "FFE500",
+    intro_audio: Path | None = None,
+    intro_words: list[Word] | None = None,
 ) -> Path:
     """Kaynak klipten altyazılı dikey video üretir. Altyazı dosyası dst yanına yazılır.
 
@@ -249,10 +253,18 @@ def make_short(
         segments = plan_story(words or [], duration, audio_db(src) if has_audio else None)
         words = remap_words(words or [], segments)
         duration = sum(seg.length for seg in segments)
+    intro_seconds = 0.0
+    if intro_audio is not None and has_audio:
+        intro_seconds = round(probe_audio_seconds(intro_audio) + 0.35, 3)  # anlatımdan sonra kısa nefes
+        words = list(intro_words or []) + [
+            Word(round(w.start + intro_seconds, 3), round(w.end + intro_seconds, 3), w.text) for w in (words or [])
+        ]
+        duration += intro_seconds
     if look == "viral":
         text, colors, starts = build_viral_ass(
             words or [], language, duration, layout.height, hook=hook, watermark=watermark or None,
-            accent=accent or None,
+            accent=accent or None, position=0.74 if layout.mode == "blur" else 0.52,
+            break_at=intro_seconds or None,
         )
         if effects is not None and has_audio and not effects.flashes:
             effects.flashes = plan_flashes(find_punches(src), starts, colors)
@@ -267,7 +279,7 @@ def make_short(
         effects.flashes = []  # flaş zamanları kurgusuz videoya göre; kurguda kapalı
         fx = effects_filter(effects)
     return render(src, dst, layout, ass_path, fps=fps, crf=crf, has_audio=has_audio, effects=fx or None,
-                  segments=segments)
+                  segments=segments, intro_audio=intro_audio if intro_seconds else None, intro_seconds=intro_seconds)
 
 
 def render_clip(job: Job, clip: Clip) -> None:
@@ -290,6 +302,9 @@ def render_clip(job: Job, clip: Clip) -> None:
         clip.words = [asdict(w) for w in words]
         clip.language = lang
     o = job.options
+    intro_audio, intro_words = None, None
+    if o.intro and info["has_audio"]:
+        intro_audio, intro_words = _narrate_intro(job, clip, src_dir)
     layout = Layout(
         mode=o.layout, crop_x=o.crop_x, cam=tuple(o.cam) if o.cam else None, cam_height=o.cam_height,
         height=1440 if o.aspect == "3:4" else 1920,
@@ -303,10 +318,41 @@ def render_clip(job: Job, clip: Clip) -> None:
         has_audio=info["has_audio"],
         effects=Effects() if o.effects else None,
         look=o.look, watermark=o.watermark, story=o.story, accent=o.accent,
+        intro_audio=intro_audio, intro_words=intro_words,
     )
     clip.file = dst.name
     clip.status = "ready"
     job.save()
+
+
+def probe_audio_seconds(path: Path) -> float:
+    import subprocess
+
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    return float(out or 0)
+
+
+def _narrate_intro(job: Job, clip: Clip, work: Path) -> tuple[Path | None, list[Word] | None]:
+    """Gemini ile özet cümleyi (yoksa) yazdırır, seslendirir ve kelime zamanlarını çıkarır."""
+    from . import gemini
+
+    if not gemini.available():
+        job.say(f"{clip.id}: Gemini anahtarı yok (GEMINI_API_KEY); giriş anlatımı atlandı.")
+        return None, None
+    try:
+        if not clip.intro:
+            transcript = " ".join(w["text"] for w in clip.words)
+            clip.intro = gemini.summarize(transcript, job.stream.get("uploader", ""), job.stream.get("title", ""))
+        job.say(f"{clip.id}: giriş anlatımı: {clip.intro}")
+        wav = gemini.speak(clip.intro, work / f"{clip.id}_intro.wav")
+        words, _ = transcribe(wav, language="en", model_size=job.options.caption_model)
+        return wav, words
+    except Exception as exc:  # anlatım olmadan da klip üretilsin
+        job.say(f"{clip.id}: giriş anlatımı yapılamadı: {exc}")
+        return None, None
 
 
 def upload_clip(job: Job, clip: Clip, privacy: str | None = None, publish_at: str | None = None) -> None:
