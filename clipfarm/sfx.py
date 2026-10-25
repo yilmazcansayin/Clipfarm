@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 RATE = 48000
-NAMES = ("boom", "whoosh", "riser", "ding", "scratch", "shutter", "rewind", "pop", "drop", "hit")
+NAMES = ("boom", "whoosh", "riser", "ding", "scratch", "shutter", "rewind", "pop", "drop", "hit", "sting")
 
 
 def _t(seconds: float) -> np.ndarray:
@@ -105,6 +105,18 @@ def synth(name: str) -> np.ndarray:
     if name == "pop":  # yazı/etiket çıkışı
         t = _t(0.09)
         return np.sin(_sweep(900, 260, 0.09)) * np.exp(-t * 35)
+    if name == "sting":  # garip an: inen üç koparma nota ("womp womp"), Curb müziğinin yerine
+        out = []
+        for i, f in enumerate((392.0, 349.2, 293.7)):
+            n = int(RATE * (0.32 if i < 2 else 0.9))
+            period = int(RATE / f)
+            buf = rng.uniform(-1, 1, period)
+            y = np.empty(n)
+            for k in range(n):  # Karplus-Strong telli çalgı
+                y[k] = buf[k % period]
+                buf[k % period] = 0.996 * 0.5 * (buf[k % period] + buf[(k + 1) % period])
+            out.append(y)
+        return np.concatenate(out)
     if name == "drop":  # bas düşüşü: büyük anın hemen öncesinde
         t = _t(1.8)
         x = np.sin(_sweep(140, 35, 1.8)) * np.exp(-t * 1.4) * np.minimum(1, t * 50)

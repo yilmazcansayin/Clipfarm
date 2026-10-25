@@ -1,0 +1,544 @@
+{
+ "vod": "SOW3qCJJSlQ",
+ "note": "Deneysel kurgu planları; zamanlar VOD saniyesi. recipes = araştırma dokümanındaki tarif numaraları.",
+ "clips": [
+  {
+   "id": "clip01_this_game_easy",
+   "source_candidate": 19,
+   "start": 8185.0,
+   "end": 8225.2,
+   "top": "SPEED VS A HORROR GAME",
+   "blur": [
+    [
+     0.83,
+     0.0,
+     0.17,
+     0.26
+    ],
+    [
+     0.0,
+     0.26,
+     0.18,
+     0.2
+    ]
+   ],
+   "recipes": [
+    "2 teaser",
+    "7 facecam takeover",
+    "4 replay"
+   ],
+   "timeline": [
+    {
+     "from": 8216.0,
+     "to": 8217.5,
+     "label": "THIS GAME EASY..."
+    },
+    {
+     "from": 8185.0,
+     "to": 8193.5
+    },
+    {
+     "from": 8207.0,
+     "to": 8218.6
+    },
+    {
+     "from": 8215.8,
+     "to": 8217.6,
+     "speed": 0.5,
+     "replay": true,
+     "push": 1.25,
+     "cx": 0.15,
+     "cy": 0.68,
+     "sfx": "rewind",
+     "gain_db": -10,
+     "label": "REPLAY"
+    },
+    {
+     "from": 8218.6,
+     "to": 8225.2
+    }
+   ],
+   "events": [
+    {
+     "t": 8216.0,
+     "type": "punch",
+     "scale": 1.9,
+     "hold": 1.4,
+     "cx": 0.15,
+     "cy": 0.68
+    },
+    {
+     "t": 8216.0,
+     "type": "shake",
+     "dur": 0.2,
+     "amp": 10
+    }
+   ]
+  },
+  {
+   "id": "clip02_jamal_one_job",
+   "source_candidate": 21,
+   "start": 8478.0,
+   "end": 8510.2,
+   "top": "SPEED'S FRIEND HAD ONE JOB",
+   "blur": [
+    [
+     0.83,
+     0.0,
+     0.17,
+     0.26
+    ],
+    [
+     0.0,
+     0.26,
+     0.18,
+     0.2
+    ]
+   ],
+   "recipes": [
+    "7 facecam takeover",
+    "3 awkward freeze ending"
+   ],
+   "timeline": [
+    {
+     "from": 8478.0,
+     "to": 8510.2
+    },
+    {
+     "freeze": 1.8,
+     "at": 8510.1,
+     "push": 1.1,
+     "cx": 0.25,
+     "cy": 0.75,
+     "bw": true,
+     "sfx": "sting",
+     "gain_db": -8,
+     "label": "POOR JAMAL"
+    }
+   ],
+   "events": [
+    {
+     "t": 8485.2,
+     "type": "punch",
+     "scale": 1.7,
+     "hold": 1.6,
+     "cx": 0.14,
+     "cy": 0.72
+    }
+   ]
+  },
+  {
+   "id": "clip03_about_to_score",
+   "source_candidate": 10,
+   "start": 4583.6,
+   "end": 4632.0,
+   "top": "SPEED VS EKITIKE, LAST MINUTE",
+   "blur": [
+    [
+     0.62,
+     0.0,
+     0.24,
+     0.14
+    ],
+    [
+     0.83,
+     0.68,
+     0.17,
+     0.28
+    ]
+   ],
+   "recipes": [
+    "2 teaser",
+    "10 build + riser",
+    "1 punch-in"
+   ],
+   "timeline": [
+    {
+     "from": 4626.3,
+     "to": 4628.6,
+     "label": "89TH MINUTE. 4-4."
+    },
+    {
+     "from": 4583.6,
+     "to": 4591.2
+    },
+    {
+     "from": 4615.8,
+     "to": 4632.0
+    }
+   ],
+   "events": [
+    {
+     "t": 4621.3,
+     "type": "push",
+     "to_t": 4626.2,
+     "scale": 1.12,
+     "cx": 0.17,
+     "cy": 0.8
+    },
+    {
+     "t": 4624.6,
+     "type": "sfx",
+     "name": "riser",
+     "gain_db": -14
+    },
+    {
+     "t": 4627.4,
+     "type": "punch",
+     "scale": 1.35,
+     "hold": 1.1,
+     "cx": 0.17,
+     "cy": 0.8
+    }
+   ]
+  },
+  {
+   "id": "clip04_three_three",
+   "source_candidate": 8,
+   "start": 4384.0,
+   "end": 4408.0,
+   "top": "SPEED VS EKITIKE GETS INTENSE",
+   "blur": [
+    [
+     0.62,
+     0.0,
+     0.24,
+     0.14
+    ],
+    [
+     0.83,
+     0.68,
+     0.17,
+     0.28
+    ]
+   ],
+   "recipes": [
+    "1 punch-in",
+    "4 replay"
+   ],
+   "timeline": [
+    {
+     "from": 4384.0,
+     "to": 4398.2
+    },
+    {
+     "from": 4391.2,
+     "to": 4393.6,
+     "speed": 0.5,
+     "replay": true,
+     "push": 1.2,
+     "cx": 0.5,
+     "cy": 0.5,
+     "sfx": "rewind",
+     "gain_db": -10,
+     "label": "3-3"
+    },
+    {
+     "from": 4398.2,
+     "to": 4408.0
+    }
+   ],
+   "events": [
+    {
+     "t": 4393.7,
+     "type": "punch",
+     "scale": 1.3,
+     "hold": 0.9,
+     "cx": 0.17,
+     "cy": 0.78
+    }
+   ]
+  },
+  {
+   "id": "clip05_gg_i_lost",
+   "source_candidate": 13,
+   "start": 5369.0,
+   "end": 5424.0,
+   "top": "SPEED AFTER LOSING TO EKITIKE",
+   "blur": [
+    [
+     0.62,
+     0.0,
+     0.24,
+     0.14
+    ],
+    [
+     0.83,
+     0.68,
+     0.17,
+     0.28
+    ]
+   ],
+   "recipes": [
+    "dead-air cuts",
+    "1 punch-in",
+    "6 record-scratch freeze"
+   ],
+   "timeline": [
+    {
+     "from": 5369.0,
+     "to": 5379.6
+    },
+    {
+     "from": 5391.3,
+     "to": 5398.6
+    },
+    {
+     "from": 5408.8,
+     "to": 5414.7
+    },
+    {
+     "freeze": 0.9,
+     "at": 5414.7,
+     "bw": true,
+     "push": 1.12,
+     "cx": 0.17,
+     "cy": 0.75,
+     "sfx": "scratch",
+     "gain_db": -4,
+     "label": "HE JUST LOST"
+    },
+    {
+     "from": 5414.7,
+     "to": 5424.0
+    }
+   ],
+   "events": [
+    {
+     "t": 5391.3,
+     "type": "punch",
+     "scale": 1.2,
+     "hold": 0.8,
+     "cx": 0.17,
+     "cy": 0.75
+    }
+   ]
+  },
+  {
+   "id": "clip06_im_hacked",
+   "source_candidate": 20,
+   "start": 8287.6,
+   "end": 8325.0,
+   "top": "SPEED THINKS HE GOT HACKED",
+   "blur": [
+    [
+     0.83,
+     0.0,
+     0.17,
+     0.26
+    ],
+    [
+     0.0,
+     0.26,
+     0.18,
+     0.2
+    ]
+   ],
+   "recipes": [
+    "6 record-scratch freeze",
+    "1 punch-in + boom"
+   ],
+   "timeline": [
+    {
+     "from": 8287.6,
+     "to": 8296.2
+    },
+    {
+     "from": 8318.4,
+     "to": 8320.2
+    },
+    {
+     "freeze": 0.8,
+     "at": 8320.2,
+     "bw": true,
+     "push": 1.1,
+     "cx": 0.15,
+     "cy": 0.68,
+     "sfx": "scratch",
+     "gain_db": -4,
+     "label": "IT WAS NOT FIXED"
+    },
+    {
+     "from": 8320.2,
+     "to": 8325.0
+    }
+   ],
+   "events": [
+    {
+     "t": 8322.5,
+     "type": "punch",
+     "scale": 1.3,
+     "hold": 0.9,
+     "cx": 0.15,
+     "cy": 0.68,
+     "sfx": "boom",
+     "gain_db": -8
+    }
+   ]
+  },
+  {
+   "id": "clip07_which_way_home",
+   "source_candidate": 24,
+   "start": 8786.0,
+   "end": 8826.3,
+   "top": "SPEED GOT LOST IN A HORROR GAME",
+   "blur": [
+    [
+     0.83,
+     0.0,
+     0.17,
+     0.26
+    ],
+    [
+     0.0,
+     0.26,
+     0.18,
+     0.2
+    ]
+   ],
+   "recipes": [
+    "time-skip label",
+    "8 snapshot freeze ending"
+   ],
+   "timeline": [
+    {
+     "from": 8786.0,
+     "to": 8792.0
+    },
+    {
+     "from": 8802.3,
+     "to": 8826.3
+    },
+    {
+     "freeze": 1.4,
+     "at": 8826.3,
+     "push": 1.05,
+     "cx": 0.25,
+     "cy": 0.75,
+     "sfx": "shutter",
+     "gain_db": -8,
+     "label": "JAMAL THOUGH"
+    }
+   ],
+   "events": [
+    {
+     "t": 8802.3,
+     "type": "text",
+     "text": "10 SECONDS LATER",
+     "dur": 1.4,
+     "pos": "top",
+     "sfx": "whoosh",
+     "gain_db": -12
+    },
+    {
+     "t": 8826.25,
+     "type": "flash",
+     "dur": 0.07
+    }
+   ]
+  },
+  {
+   "id": "clip08_five_times",
+   "source_candidate": 28,
+   "start": 9873.4,
+   "end": 9900.4,
+   "top": "JAMAL WATCHING SPEED PLAY HORROR",
+   "blur": [
+    [
+     0.83,
+     0.0,
+     0.17,
+     0.26
+    ],
+    [
+     0.0,
+     0.26,
+     0.18,
+     0.2
+    ]
+   ],
+   "recipes": [
+    "10 slow push over the scream",
+    "1 punch-in on Jamal + boom"
+   ],
+   "timeline": [
+    {
+     "from": 9873.4,
+     "to": 9876.2
+    },
+    {
+     "from": 9885.2,
+     "to": 9900.4
+    }
+   ],
+   "events": [
+    {
+     "t": 9886.2,
+     "type": "push",
+     "to_t": 9894.8,
+     "scale": 1.25,
+     "cx": 0.15,
+     "cy": 0.68
+    },
+    {
+     "t": 9896.9,
+     "type": "punch",
+     "scale": 1.9,
+     "hold": 1.8,
+     "cx": 0.36,
+     "cy": 0.86,
+     "sfx": "boom",
+     "gain_db": -6
+    },
+    {
+     "t": 9896.9,
+     "type": "text",
+     "text": "JAMAL HAD ENOUGH",
+     "dur": 1.8,
+     "pos": "top"
+    }
+   ]
+  },
+  {
+   "id": "clip09_gravity",
+   "source_candidate": 2,
+   "start": 940.6,
+   "end": 976.5,
+   "top": "SPEED EXPLAINS GRAVITY",
+   "blur": [
+    [
+     0.83,
+     0.0,
+     0.17,
+     0.26
+    ]
+   ],
+   "recipes": [
+    "dead-air cut",
+    "3 awkward freeze ending"
+   ],
+   "timeline": [
+    {
+     "from": 940.6,
+     "to": 952.2
+    },
+    {
+     "from": 962.2,
+     "to": 976.5
+    },
+    {
+     "freeze": 2.0,
+     "at": 976.4,
+     "bw": true,
+     "push": 1.08,
+     "cx": 0.17,
+     "cy": 0.7,
+     "sfx": "sting",
+     "gain_db": -8,
+     "label": "SCIENCE WITH SPEED"
+    }
+   ],
+   "events": []
+  }
+ ]
+}

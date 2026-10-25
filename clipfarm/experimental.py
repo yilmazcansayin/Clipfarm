@@ -42,6 +42,7 @@ from .timeutil import ass_timestamp
 
 FPS = 30
 RATE = 48000
+LOUDNORM = f"loudnorm=I=-14:TP=-1.5:LRA=11,aresample={RATE}"  # YouTube'un çektiği düzey
 
 
 @dataclass
@@ -66,6 +67,10 @@ class Piece:
 
 def _num(x: float) -> str:
     return f"{x:.3f}"
+
+
+def _even_px(v: float) -> int:
+    return max(0, int(round(v / 2)) * 2)
 
 
 def build_pieces(plan: dict, clip_start: float) -> list[Piece]:
@@ -265,13 +270,22 @@ def render_plan(plan: dict, src: Path, clip_start: float, words: list[Word], lan
         g.append("".join(labels_v) + f"concat=n={n}:v=1:a=0[cv]")
 
     W0, H0 = info["width"], info["height"]
+    # izleyici mesajı / sohbet / bağış kutusu gibi alanları bulanıklaştır (küfür, hakaret içerebiliyor)
+    cur = "[cv]"
+    for k, (bx, by, bw_, bh) in enumerate(plan.get("blur", [])):
+        x, y = _even_px(bx * W0), _even_px(by * H0)
+        w, h = _even_px(bw_ * W0), _even_px(bh * H0)
+        w, h = min(w, W0 - x), min(h, H0 - y)
+        g.append(f"{cur}split=2[mb{k}a][mb{k}b];[mb{k}b]crop={w}:{h}:{x}:{y},boxblur={max(2, min(40, min(w, h) // 2 - 1))}:3:{max(1, min(20, min(w, h) // 4 - 1))}:3[mb{k}c];"
+                 f"[mb{k}a][mb{k}c]overlay={x}:{y}[mk{k}]")
+        cur = f"[mk{k}]"
     chain = []
     for a, b in bw:
         chain.append(f"hue=s=0:enable='between(t,{_num(a)},{_num(b)})'")
     if motion.zooms or motion.shakes:
         z, x, y = motion.expressions()
         chain.append(f"zoompan=z='{z}':x='{x}':y='{y}':d=1:s={W0}x{H0}:fps={FPS}")
-    g.append("[cv]" + (",".join(chain) if chain else "null") + "[mv]")
+    g.append(cur + (",".join(chain) if chain else "null") + "[mv]")
     layout = video_filter(Layout(mode="blur", height=height)).replace("[0:v]", "[mv]", 1)
     g.append(layout[: -len("[v]")] + "[lv]")
 
@@ -305,9 +319,9 @@ def render_plan(plan: dict, src: Path, clip_start: float, words: list[Word], lan
             g.append(f"[{k}:a]aformat=sample_rates={RATE}:channel_layouts=stereo,volume={gain}dB,adelay={ms}|{ms}[s{k}]")
             mix.append(f"[s{k}]")
         if len(mix) > 1:
-            g.append("".join(mix) + f"amix=inputs={len(mix)}:normalize=0:duration=first,alimiter=limit=0.95[aout]")
+            g.append("".join(mix) + f"amix=inputs={len(mix)}:normalize=0:duration=first,{LOUDNORM}[aout]")
         else:
-            g.append("[ca]alimiter=limit=0.95[aout]")
+            g.append(f"[ca]{LOUDNORM}[aout]")
 
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *inputs,
            "-filter_complex", ";".join(g), "-map", "[v]"]
