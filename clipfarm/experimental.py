@@ -109,6 +109,20 @@ def to_out(pieces: list[Piece], src_t: float) -> float | None:
     return None
 
 
+def apply_overrides(words: list[Word], overrides: list[dict], clip_start: float) -> list[Word]:
+    """Elle düzeltilmiş altyazı: aralıktaki kelimeleri verilen metinle değiştirir (boş metin = altyazı yok).
+
+    Whisper bağırmaları uydurabiliyor ("WHY DID YOU…"); bu satırlar planda düzeltilir.
+    """
+    for ov in overrides:
+        a, b = float(ov["from"]) - clip_start, float(ov["to"]) - clip_start
+        words = [w for w in words if not (a <= w.start < b)]
+        tokens = ov.get("text", "").split()
+        step = (b - a) / max(1, len(tokens))
+        words += [Word(round(a + i * step, 3), round(a + (i + 1) * step - 0.02, 3), t) for i, t in enumerate(tokens)]
+    return sorted(words, key=lambda w: w.start)
+
+
 def remap(words: list[Word], pieces: list[Piece]) -> list[Word]:
     out = []
     for p in pieces:
@@ -191,6 +205,7 @@ def render_plan(plan: dict, src: Path, clip_start: float, words: list[Word], lan
                 height: int = 1440, accent: str = "FFE500", crf: int = 19) -> Path:
     """src: yayından kesilmiş klip dosyası (clip_start = bu dosyanın VOD'daki başlangıcı)."""
     info = probe(src)
+    words = apply_overrides(words, plan.get("captions", []), clip_start)
     pieces = build_pieces(plan, clip_start)
     duration = pieces[-1].out1
     work = dst.parent / f"{dst.stem}_work"

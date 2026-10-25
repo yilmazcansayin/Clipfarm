@@ -99,15 +99,15 @@
    ],
    "timeline": [
     {
-     "from": 8474.4,
+     "from": 8473.85,
      "to": 8490.0
     },
     {
      "freeze": 1.8,
      "at": 8490.0,
      "push": 1.1,
-     "cx": 0.25,
-     "cy": 0.75,
+     "cx": 0.3,
+     "cy": 0.82,
      "bw": true,
      "sfx": "sting",
      "gain_db": -8,
@@ -124,8 +124,15 @@
      "cy": 0.72
     }
    ],
-   "start": 8474.4,
-   "end": 8490.0
+   "start": 8473.85,
+   "end": 8490.0,
+   "captions": [
+    {
+     "from": 8478.8,
+     "to": 8480.8,
+     "text": ""
+    }
+   ]
   },
   {
    "id": "clip03_about_to_score",
@@ -157,8 +164,8 @@
      "label": "89TH MINUTE. 4-4."
     },
     {
-     "from": 4574.4,
-     "to": 4577.0
+     "from": 4573.85,
+     "to": 4577.25
     },
     {
      "from": 4605.7,
@@ -189,8 +196,20 @@
      "cy": 0.8
     }
    ],
-   "start": 4574.4,
-   "end": 4629.0
+   "start": 4573.85,
+   "end": 4629.0,
+   "captions": [
+    {
+     "from": 4605.75,
+     "to": 4608.0,
+     "text": "OH NO, I WAS ABOUT TO SCORE"
+    },
+    {
+     "from": 4608.25,
+     "to": 4610.0,
+     "text": "I WAS ABOUT TO SCORE"
+    }
+   ]
   },
   {
    "id": "clip04_three_three",
@@ -274,15 +293,15 @@
    ],
    "timeline": [
     {
-     "from": 5355.0,
+     "from": 5354.85,
      "to": 5370.5
     },
     {
      "from": 5375.0,
-     "to": 5385.0
+     "to": 5385.9
     },
     {
-     "from": 5395.9,
+     "from": 5395.95,
      "to": 5402.2
     },
     {
@@ -298,7 +317,7 @@
     },
     {
      "from": 5402.2,
-     "to": 5406.9
+     "to": 5406.97
     }
    ],
    "events": [
@@ -311,8 +330,20 @@
      "cy": 0.75
     }
    ],
-   "start": 5355.0,
-   "end": 5406.9
+   "start": 5354.85,
+   "end": 5406.97,
+   "captions": [
+    {
+     "from": 5368.2,
+     "to": 5370.5,
+     "text": "THAT WAS NEVER A PENALTY"
+    },
+    {
+     "from": 5375.0,
+     "to": 5379.0,
+     "text": "ALRIGHT BRO, GG'S BRO, I LOST BRO"
+    }
+   ]
   },
   {
    "id": "clip06_im_hacked",
@@ -334,7 +365,7 @@
    ],
    "recipes": [
     "6 record-scratch freeze",
-    "1 punch-in + boom"
+    "keyword label + boom (Speed is off camera, no punch-in)"
    ],
    "timeline": [
     {
@@ -342,33 +373,32 @@
      "to": 8277.5
     },
     {
-     "from": 8297.6,
-     "to": 8299.4
+     "from": 8296.95,
+     "to": 8300.2
     },
     {
      "freeze": 0.8,
-     "at": 8299.4,
+     "at": 8300.2,
      "bw": true,
-     "push": 1.1,
-     "cx": 0.15,
-     "cy": 0.68,
+     "push": 1.06,
+     "cx": 0.5,
+     "cy": 0.5,
      "sfx": "scratch",
      "gain_db": -4,
      "label": "IT WAS NOT FIXED"
     },
     {
-     "from": 8299.4,
+     "from": 8300.2,
      "to": 8304.0
     }
    ],
    "events": [
     {
      "t": 8302.8,
-     "type": "punch",
-     "scale": 1.3,
-     "hold": 0.9,
-     "cx": 0.15,
-     "cy": 0.68,
+     "type": "text",
+     "text": "HACKED?!",
+     "dur": 1.2,
+     "pos": "top",
      "sfx": "boom",
      "gain_db": -8
     }
@@ -400,11 +430,11 @@
    ],
    "timeline": [
     {
-     "from": 8764.8,
+     "from": 8764.3,
      "to": 8771.2
     },
     {
-     "from": 8781.8,
+     "from": 8781.3,
      "to": 8802.5
     },
     {
@@ -438,7 +468,7 @@
      "dur": 0.07
     }
    ],
-   "start": 8764.8,
+   "start": 8764.3,
    "end": 8826.3
   },
   {
@@ -469,8 +499,8 @@
      "to": 9852.5
     },
     {
-     "from": 9871.0,
-     "to": 9877.2
+     "from": 9870.7,
+     "to": 9876.8
     },
     {
      "from": 9885.4,
@@ -505,7 +535,14 @@
     }
    ],
    "start": 9850.4,
-   "end": 9896.6
+   "end": 9896.6,
+   "captions": [
+    {
+     "from": 9885.4,
+     "to": 9896.6,
+     "text": "AAAAAAHHHHHH"
+    }
+   ]
   },
   {
    "id": "clip09_gravity",
@@ -517,6 +554,12 @@
      0.0,
      0.17,
      0.26
+    ],
+    [
+     0.0,
+     0.28,
+     0.17,
+     0.2
     ]
    ],
    "recipes": [
@@ -525,20 +568,20 @@
    ],
    "timeline": [
     {
-     "from": 943.0,
+     "from": 942.5,
      "to": 959.6
     },
     {
      "from": 959.7,
-     "to": 976.6
+     "to": 976.7
     },
     {
-     "from": 985.2,
-     "to": 987.4
+     "from": 985.1,
+     "to": 987.15
     },
     {
      "freeze": 2.0,
-     "at": 987.4,
+     "at": 987.15,
      "bw": true,
      "push": 1.08,
      "cx": 0.17,
@@ -549,8 +592,8 @@
     }
    ],
    "events": [],
-   "start": 943.0,
-   "end": 987.4
+   "start": 942.5,
+   "end": 987.15
   },
   {
    "id": "clip10_lost_the_keys",
@@ -586,11 +629,11 @@
     },
     {
      "from": 9023.8,
-     "to": 9027.0
+     "to": 9026.6
     },
     {
      "from": 9060.5,
-     "to": 9072.9
+     "to": 9073.0
     }
    ],
    "events": [
@@ -627,7 +670,7 @@
     }
    ],
    "start": 8914.0,
-   "end": 9072.9
+   "end": 9073.0
   }
  ]
 }
