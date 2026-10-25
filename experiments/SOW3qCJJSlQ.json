@@ -106,12 +106,12 @@
      "freeze": 1.8,
      "at": 8490.0,
      "push": 1.1,
-     "cx": 0.3,
-     "cy": 0.82,
+     "cx": 0.15,
+     "cy": 0.68,
      "bw": true,
      "sfx": "sting",
      "gain_db": -8,
-     "label": "POOR JAMAL"
+     "label": "HE BLAMED JAMAL"
     }
    ],
    "events": [
@@ -340,8 +340,8 @@
     },
     {
      "from": 5375.0,
-     "to": 5379.0,
-     "text": "ALRIGHT BRO, GG'S BRO, I LOST BRO"
+     "to": 5385.9,
+     "text": "ALRIGHT BRO, GG'S BRO, I LOST BRO. GG'S GG'S BRO GG'S, I LOST, I LOST BRO"
     }
    ]
   },
