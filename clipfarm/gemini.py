@@ -79,7 +79,7 @@ def speak(text: str, dst: Path, voice: str | None = None, style: str = "Say like
             break
         except urllib.error.HTTPError as exc:
             errors.append(f"{model}: HTTP {exc.code}")
-            if exc.code not in (404, 429):
+            if exc.code not in (400, 403, 404, 429):  # desteklenmeyen model ya da kota dolu
                 raise
     else:
         raise RuntimeError("Hiçbir Gemini ses modeli yanıt vermedi (" + ", ".join(errors) + ")")
