@@ -170,7 +170,9 @@ def _download_audio_and_chat(job: Job) -> tuple[Path, Path | None]:
     out.mkdir(parents=True, exist_ok=True)
     opts = {
         "outtmpl": str(out / "stream.%(ext)s"),
-        "format": "worstaudio/bestaudio/worst",
+        # "worstaudio" YouTube VOD'larında eksik parçalı HLS akışı veriyordu: ses yayından ~400 sn
+        # kısa çıkıyor, aday kelime zamanları kayıyordu. Tek parça https ses tercih edilir.
+        "format": "bestaudio[protocol=https]/bestaudio[protocol=http]/bestaudio/worst",
         "noplaylist": True,
         "quiet": True,
         "writesubtitles": True,
@@ -180,6 +182,11 @@ def _download_audio_and_chat(job: Job) -> tuple[Path, Path | None]:
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(job.url, download=True)
     audio = Path(info["requested_downloads"][0]["filepath"])
+    expected = float(info.get("duration") or 0)
+    if expected:
+        got = probe_audio_seconds(audio)
+        if abs(got - expected) > max(5.0, expected * 0.005):
+            job.say(f"Uyarı: analiz sesi {got:.0f} sn, yayın {expected:.0f} sn; zamanlar kayabilir.")
     chat = next((p for p in out.iterdir() if p.suffix == ".json"), None)
     return audio, chat
 
