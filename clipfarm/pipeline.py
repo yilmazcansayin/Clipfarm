@@ -137,7 +137,8 @@ def stream_info(url: str) -> dict:
 
     with yt_dlp.YoutubeDL({"quiet": True, "noplaylist": True, "skip_download": True}) as ydl:
         info = ydl.extract_info(url, download=False)
-    channel_url = info.get("channel_url") or info.get("uploader_url") or ""
+    # uploader_url okunur adres verir (youtube.com/@IShowSpeed); channel_url ise UC… kimliği
+    channel_url = info.get("uploader_url") or info.get("channel_url") or ""
     if not channel_url and info.get("extractor_key", "").lower().startswith("twitch") and info.get("uploader_id"):
         channel_url = f"https://www.twitch.tv/{info['uploader_id']}"
     if not channel_url and info.get("extractor_key", "").lower().startswith("kick") and info.get("channel"):

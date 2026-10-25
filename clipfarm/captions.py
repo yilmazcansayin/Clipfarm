@@ -182,7 +182,7 @@ def build_ass(
                 token = fmt(other.text)
                 if j == i:
                     # konuşulan kelime büyük başlayıp yerine oturur (pop)
-                    token = f"{{\\c{hl}\\fscx125\\fscy125\\t(0,90,\\fscx108\\fscy108)}}{token}{{\\r}}"
+                    token = f"{{\\c{hl}\\fscx116\\fscy116\\t(0,90,\\fscx108\\fscy108)}}{token}{{\\r}}"
                 parts.append(token)
             lines.append(event(start, end, "Caption", " ".join(parts)))
     return "\n".join(lines) + "\n"
