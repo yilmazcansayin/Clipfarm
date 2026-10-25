@@ -1,12 +1,10 @@
 {
  "vod": "SOW3qCJJSlQ",
- "note": "Deneysel kurgu planları; zamanlar VOD saniyesi. recipes = araştırma dokümanındaki tarif numaraları.",
+ "note": "Deneysel kurgu planları; zamanlar VOD saniyesi (source.mp4'ten yeniden yazıya dökülmüş zamanlarla). recipes = araştırma dokümanındaki tarif numaraları.",
  "clips": [
   {
    "id": "clip01_this_game_easy",
    "source_candidate": 19,
-   "start": 8185.0,
-   "end": 8225.2,
    "top": "SPEED VS A HORROR GAME",
    "blur": [
     [
@@ -29,21 +27,21 @@
    ],
    "timeline": [
     {
-     "from": 8216.0,
-     "to": 8217.5,
+     "from": 8216.6,
+     "to": 8218.2,
      "label": "THIS GAME EASY..."
     },
     {
-     "from": 8185.0,
-     "to": 8193.5
+     "from": 8165.8,
+     "to": 8172.4
     },
     {
-     "from": 8207.0,
+     "from": 8202.2,
      "to": 8218.6
     },
     {
-     "from": 8215.8,
-     "to": 8217.6,
+     "from": 8216.0,
+     "to": 8218.0,
      "speed": 0.5,
      "replay": true,
      "push": 1.25,
@@ -55,12 +53,12 @@
     },
     {
      "from": 8218.6,
-     "to": 8225.2
+     "to": 8227.8
     }
    ],
    "events": [
     {
-     "t": 8216.0,
+     "t": 8216.2,
      "type": "punch",
      "scale": 1.9,
      "hold": 1.4,
@@ -68,18 +66,18 @@
      "cy": 0.68
     },
     {
-     "t": 8216.0,
+     "t": 8216.2,
      "type": "shake",
      "dur": 0.2,
      "amp": 10
     }
-   ]
+   ],
+   "start": 8165.8,
+   "end": 8227.8
   },
   {
    "id": "clip02_jamal_one_job",
    "source_candidate": 21,
-   "start": 8478.0,
-   "end": 8510.2,
    "top": "SPEED'S FRIEND HAD ONE JOB",
    "blur": [
     [
@@ -101,12 +99,12 @@
    ],
    "timeline": [
     {
-     "from": 8478.0,
-     "to": 8510.2
+     "from": 8474.4,
+     "to": 8490.0
     },
     {
      "freeze": 1.8,
-     "at": 8510.1,
+     "at": 8490.0,
      "push": 1.1,
      "cx": 0.25,
      "cy": 0.75,
@@ -118,20 +116,20 @@
    ],
    "events": [
     {
-     "t": 8485.2,
+     "t": 8485.0,
      "type": "punch",
      "scale": 1.7,
-     "hold": 1.6,
+     "hold": 1.8,
      "cx": 0.14,
      "cy": 0.72
     }
-   ]
+   ],
+   "start": 8474.4,
+   "end": 8490.0
   },
   {
    "id": "clip03_about_to_score",
    "source_candidate": 10,
-   "start": 4583.6,
-   "end": 4632.0,
    "top": "SPEED VS EKITIKE, LAST MINUTE",
    "blur": [
     [
@@ -154,49 +152,49 @@
    ],
    "timeline": [
     {
-     "from": 4626.3,
-     "to": 4628.6,
+     "from": 4615.0,
+     "to": 4617.4,
      "label": "89TH MINUTE. 4-4."
     },
     {
-     "from": 4583.6,
-     "to": 4591.2
+     "from": 4574.4,
+     "to": 4577.0
     },
     {
-     "from": 4615.8,
-     "to": 4632.0
+     "from": 4605.7,
+     "to": 4629.0
     }
    ],
    "events": [
     {
-     "t": 4621.3,
+     "t": 4610.2,
      "type": "push",
-     "to_t": 4626.2,
+     "to_t": 4614.9,
      "scale": 1.12,
      "cx": 0.17,
      "cy": 0.8
     },
     {
-     "t": 4624.6,
+     "t": 4613.3,
      "type": "sfx",
      "name": "riser",
      "gain_db": -14
     },
     {
-     "t": 4627.4,
+     "t": 4616.6,
      "type": "punch",
      "scale": 1.35,
-     "hold": 1.1,
+     "hold": 1.2,
      "cx": 0.17,
      "cy": 0.8
     }
-   ]
+   ],
+   "start": 4574.4,
+   "end": 4629.0
   },
   {
    "id": "clip04_three_three",
    "source_candidate": 8,
-   "start": 4384.0,
-   "end": 4408.0,
    "top": "SPEED VS EKITIKE GETS INTENSE",
    "blur": [
     [
@@ -218,12 +216,12 @@
    ],
    "timeline": [
     {
-     "from": 4384.0,
-     "to": 4398.2
+     "from": 4374.0,
+     "to": 4392.2
     },
     {
-     "from": 4391.2,
-     "to": 4393.6,
+     "from": 4380.4,
+     "to": 4382.6,
      "speed": 0.5,
      "replay": true,
      "push": 1.2,
@@ -234,26 +232,26 @@
      "label": "3-3"
     },
     {
-     "from": 4398.2,
-     "to": 4408.0
+     "from": 4392.2,
+     "to": 4398.2
     }
    ],
    "events": [
     {
-     "t": 4393.7,
+     "t": 4382.7,
      "type": "punch",
      "scale": 1.3,
-     "hold": 0.9,
+     "hold": 1.0,
      "cx": 0.17,
      "cy": 0.78
     }
-   ]
+   ],
+   "start": 4374.0,
+   "end": 4398.2
   },
   {
    "id": "clip05_gg_i_lost",
    "source_candidate": 13,
-   "start": 5369.0,
-   "end": 5424.0,
    "top": "SPEED AFTER LOSING TO EKITIKE",
    "blur": [
     [
@@ -276,20 +274,20 @@
    ],
    "timeline": [
     {
-     "from": 5369.0,
-     "to": 5379.6
+     "from": 5355.0,
+     "to": 5370.5
     },
     {
-     "from": 5391.3,
-     "to": 5398.6
+     "from": 5375.0,
+     "to": 5385.0
     },
     {
-     "from": 5408.8,
-     "to": 5414.7
+     "from": 5395.9,
+     "to": 5402.2
     },
     {
      "freeze": 0.9,
-     "at": 5414.7,
+     "at": 5402.2,
      "bw": true,
      "push": 1.12,
      "cx": 0.17,
@@ -299,26 +297,26 @@
      "label": "HE JUST LOST"
     },
     {
-     "from": 5414.7,
-     "to": 5424.0
+     "from": 5402.2,
+     "to": 5406.9
     }
    ],
    "events": [
     {
-     "t": 5391.3,
+     "t": 5375.0,
      "type": "punch",
      "scale": 1.2,
      "hold": 0.8,
      "cx": 0.17,
      "cy": 0.75
     }
-   ]
+   ],
+   "start": 5355.0,
+   "end": 5406.9
   },
   {
    "id": "clip06_im_hacked",
    "source_candidate": 20,
-   "start": 8287.6,
-   "end": 8325.0,
    "top": "SPEED THINKS HE GOT HACKED",
    "blur": [
     [
@@ -340,16 +338,16 @@
    ],
    "timeline": [
     {
-     "from": 8287.6,
-     "to": 8296.2
+     "from": 8265.0,
+     "to": 8277.5
     },
     {
-     "from": 8318.4,
-     "to": 8320.2
+     "from": 8297.6,
+     "to": 8299.4
     },
     {
      "freeze": 0.8,
-     "at": 8320.2,
+     "at": 8299.4,
      "bw": true,
      "push": 1.1,
      "cx": 0.15,
@@ -359,13 +357,13 @@
      "label": "IT WAS NOT FIXED"
     },
     {
-     "from": 8320.2,
-     "to": 8325.0
+     "from": 8299.4,
+     "to": 8304.0
     }
    ],
    "events": [
     {
-     "t": 8322.5,
+     "t": 8302.8,
      "type": "punch",
      "scale": 1.3,
      "hold": 0.9,
@@ -374,13 +372,13 @@
      "sfx": "boom",
      "gain_db": -8
     }
-   ]
+   ],
+   "start": 8265.0,
+   "end": 8304.0
   },
   {
    "id": "clip07_which_way_home",
    "source_candidate": 24,
-   "start": 8786.0,
-   "end": 8826.3,
    "top": "SPEED GOT LOST IN A HORROR GAME",
    "blur": [
     [
@@ -402,11 +400,15 @@
    ],
    "timeline": [
     {
-     "from": 8786.0,
-     "to": 8792.0
+     "from": 8764.8,
+     "to": 8771.2
     },
     {
-     "from": 8802.3,
+     "from": 8781.8,
+     "to": 8802.5
+    },
+    {
+     "from": 8822.0,
      "to": 8826.3
     },
     {
@@ -422,9 +424,9 @@
    ],
    "events": [
     {
-     "t": 8802.3,
+     "t": 8822.0,
      "type": "text",
-     "text": "10 SECONDS LATER",
+     "text": "20 SECONDS LATER",
      "dur": 1.4,
      "pos": "top",
      "sfx": "whoosh",
@@ -435,13 +437,13 @@
      "type": "flash",
      "dur": 0.07
     }
-   ]
+   ],
+   "start": 8764.8,
+   "end": 8826.3
   },
   {
    "id": "clip08_five_times",
    "source_candidate": 28,
-   "start": 9873.4,
-   "end": 9900.4,
    "top": "JAMAL WATCHING SPEED PLAY HORROR",
    "blur": [
     [
@@ -458,52 +460,56 @@
     ]
    ],
    "recipes": [
-    "10 slow push over the scream",
-    "1 punch-in on Jamal + boom"
+    "1 punch-in on Jamal + boom",
+    "10 slow push over the scream"
    ],
    "timeline": [
     {
-     "from": 9873.4,
-     "to": 9876.2
+     "from": 9850.4,
+     "to": 9852.5
     },
     {
-     "from": 9885.2,
-     "to": 9900.4
+     "from": 9871.0,
+     "to": 9877.2
+    },
+    {
+     "from": 9885.4,
+     "to": 9896.6
     }
    ],
    "events": [
     {
-     "t": 9886.2,
-     "type": "push",
-     "to_t": 9894.8,
-     "scale": 1.25,
-     "cx": 0.15,
-     "cy": 0.68
-    },
-    {
-     "t": 9896.9,
+     "t": 9873.9,
      "type": "punch",
      "scale": 1.9,
-     "hold": 1.8,
+     "hold": 2.4,
      "cx": 0.36,
      "cy": 0.86,
      "sfx": "boom",
      "gain_db": -6
     },
     {
-     "t": 9896.9,
+     "t": 9873.9,
      "type": "text",
      "text": "JAMAL HAD ENOUGH",
-     "dur": 1.8,
+     "dur": 2.4,
      "pos": "top"
+    },
+    {
+     "t": 9886.0,
+     "type": "push",
+     "to_t": 9895.0,
+     "scale": 1.25,
+     "cx": 0.15,
+     "cy": 0.68
     }
-   ]
+   ],
+   "start": 9850.4,
+   "end": 9896.6
   },
   {
    "id": "clip09_gravity",
    "source_candidate": 2,
-   "start": 940.6,
-   "end": 976.5,
    "top": "SPEED EXPLAINS GRAVITY",
    "blur": [
     [
@@ -514,21 +520,25 @@
     ]
    ],
    "recipes": [
-    "dead-air cut",
+    "dead-air cuts",
     "3 awkward freeze ending"
    ],
    "timeline": [
     {
-     "from": 940.6,
-     "to": 952.2
+     "from": 943.0,
+     "to": 959.6
     },
     {
-     "from": 962.2,
-     "to": 976.5
+     "from": 959.7,
+     "to": 976.6
+    },
+    {
+     "from": 985.2,
+     "to": 987.4
     },
     {
      "freeze": 2.0,
-     "at": 976.4,
+     "at": 987.4,
      "bw": true,
      "push": 1.08,
      "cx": 0.17,
@@ -538,13 +548,13 @@
      "label": "SCIENCE WITH SPEED"
     }
    ],
-   "events": []
+   "events": [],
+   "start": 943.0,
+   "end": 987.4
   },
   {
    "id": "clip10_lost_the_keys",
    "source_candidate": "25+26",
-   "start": 8932.3,
-   "end": 9070.5,
    "top": "SPEED LOST HIS KEYS IN A HORROR GAME",
    "blur": [
     [
@@ -563,28 +573,24 @@
    "recipes": [
     "dead-air cuts (story across 2 min)",
     "1 punch-in on the scream",
-    "10 build + riser before the shadow figure"
+    "10 build + riser before the yell"
    ],
    "timeline": [
     {
-     "from": 8932.3,
-     "to": 8939.6
+     "from": 8914.0,
+     "to": 8919.0
     },
     {
-     "from": 8944.6,
-     "to": 8949.2
+     "from": 8944.4,
+     "to": 8951.0
     },
     {
-     "from": 8959.6,
-     "to": 8961.4
+     "from": 9023.8,
+     "to": 9027.0
     },
     {
-     "from": 9041.2,
-     "to": 9045.5
-    },
-    {
-     "from": 9062.8,
-     "to": 9070.5
+     "from": 9060.5,
+     "to": 9072.9
     }
    ],
    "events": [
@@ -592,25 +598,36 @@
      "t": 8945.0,
      "type": "punch",
      "scale": 1.6,
-     "hold": 1.5,
+     "hold": 1.6,
      "cx": 0.19,
      "cy": 0.7
     },
     {
-     "t": 9062.8,
+     "t": 9023.8,
+     "type": "text",
+     "text": "AFTER LOSING ALL HIS KEYS",
+     "dur": 1.8,
+     "pos": "top",
+     "sfx": "whoosh",
+     "gain_db": -12
+    },
+    {
+     "t": 9062.0,
      "type": "push",
-     "to_t": 9067.8,
+     "to_t": 9067.6,
      "scale": 1.12,
      "cx": 0.19,
      "cy": 0.68
     },
     {
-     "t": 9066.2,
+     "t": 9066.0,
      "type": "sfx",
      "name": "riser",
      "gain_db": -14
     }
-   ]
+   ],
+   "start": 8914.0,
+   "end": 9072.9
   }
  ]
 }

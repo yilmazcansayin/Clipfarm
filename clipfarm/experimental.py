@@ -352,7 +352,7 @@ def run_plans(plans_file: Path, vod: Path, out_dir: Path, model: str = "small", 
             float(x) for st in plan.get("timeline", []) for x in (st.get("from"), st.get("to"), st.get("at")) if x is not None
         ]
         a, b = max(0.0, min(times) - 0.5), max(times) + 0.5
-        src = out_dir / "sources" / f"{plan['id']}_src.mp4"
+        src = out_dir / "sources" / f"{plan['id']}_{a:.1f}-{b:.1f}.mp4"  # aralık değişirse yeniden kesilir
         src.parent.mkdir(parents=True, exist_ok=True)
         if not src.exists():
             trim(vod, src, a, b)
