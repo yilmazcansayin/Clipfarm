@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 dependencies = [
   "yt-dlp>=2025.1.1",
   "faster-whisper>=1.0",
+  "av>=11,<17",  # faster-whisper 1.2 PyAV 17+ ile açılmıyor (metadata_errors)
   "numpy",
   "anthropic>=2.0",
   "google-api-python-client>=2.100",
