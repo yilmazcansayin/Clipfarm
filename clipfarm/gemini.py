@@ -61,21 +61,60 @@ def summarize(transcript: str, streamer: str = "", title: str = "") -> str:
     return text.strip('"').splitlines()[0].strip()
 
 
-def speak(text: str, dst: Path, voice: str | None = None, style: str = "Say like a calm, engaging storyteller") -> Path:
-    """Metni seslendirip 48 kHz WAV olarak kaydeder. Kota dolunca (429) sıradaki modeli dener."""
-    import urllib.error
+def _post(url: str, body: dict, timeout: int = 180) -> dict:
+    key = api_key()
+    if not key:
+        raise RuntimeError("Gemini anahtarı yok (GEMINI_API_KEY).")
+    req = urllib.request.Request(
+        url, data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": key},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
 
-    body = {
+
+def _tts_interactions(model: str, text: str, voice: str, style: str) -> tuple[bytes, bool]:
+    """Gemini 3.x ses modelleri: Interactions API. (ses baytları, WAV mı) döner."""
+    data = _post(f"{API.rsplit('/models', 1)[0]}/interactions", {
+        "model": model,
+        "input": [{"type": "user_input", "content": [{
+            "type": "text", "text": text,
+            "annotations": [{"type": "speech_metadata", "style": style}],
+        }]}],
+        "response_format": {"type": "audio"},
+        "generation_config": {"speech_config": [{"voice": voice}]},
+    })
+    for step in data.get("steps", []):
+        if step.get("type") == "model_output":
+            for c in step.get("content", []):
+                if c.get("type") == "audio":
+                    return base64.b64decode(c["data"]), True
+    raise RuntimeError(f"{model}: yanıtta ses yok")
+
+
+def _tts_generate(model: str, text: str, voice: str, style: str) -> tuple[bytes, bool]:
+    """Gemini 2.5 ses modelleri: generateContent, ham 24 kHz PCM döner."""
+    data = _call(model, {
         "contents": [{"parts": [{"text": f"{style}: {text}"}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
-            "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice or VOICE}}},
+            "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}},
         },
-    }
+    })
+    part = next(p for p in data["candidates"][0]["content"]["parts"] if "inlineData" in p)
+    return base64.b64decode(part["inlineData"]["data"]), False
+
+
+def speak(text: str, dst: Path, voice: str | None = None, style: str = "calm, engaging storyteller") -> Path:
+    """Metni seslendirip 48 kHz stereo WAV olarak kaydeder. Kota dolunca sıradaki modeli dener."""
+    import urllib.error
+
+    voice = voice or VOICE
     errors = []
     for model in TTS_MODELS:
+        fn = _tts_interactions if model.startswith("gemini-3") else _tts_generate
         try:
-            data = _call(model, body)
+            audio, is_wav = fn(model, text, voice, style)
             break
         except urllib.error.HTTPError as exc:
             errors.append(f"{model}: HTTP {exc.code}")
@@ -83,14 +122,13 @@ def speak(text: str, dst: Path, voice: str | None = None, style: str = "Say like
                 raise
     else:
         raise RuntimeError("Hiçbir Gemini ses modeli yanıt vermedi (" + ", ".join(errors) + ")")
-    part = next(p for p in data["candidates"][0]["content"]["parts"] if "inlineData" in p)
-    pcm = base64.b64decode(part["inlineData"]["data"])
-    raw = dst.with_suffix(".pcm")
-    raw.write_bytes(pcm)
     dst.parent.mkdir(parents=True, exist_ok=True)
+    raw = dst.with_suffix(".wav.in" if is_wav else ".pcm")
+    raw.write_bytes(audio)
+    fmt = [] if is_wav else ["-f", "s16le", "-ar", str(TTS_RATE), "-ac", "1"]
     # baştaki/sondaki sessizliği kırp, 48 kHz stereo WAV'a çevir
     subprocess.run(
-        ["ffmpeg", "-y", "-v", "error", "-f", "s16le", "-ar", str(TTS_RATE), "-ac", "1", "-i", str(raw),
+        ["ffmpeg", "-y", "-v", "error", *fmt, "-i", str(raw),
          "-af", "silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
                 "silenceremove=start_periods=1:start_threshold=-45dB,areverse",
          "-ar", "48000", "-ac", "2", str(dst)],
