@@ -12,7 +12,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+# youtube.upload: yükleme; youtube: planlı videoların yayın tarihini değiştirmek (videos.update)
+SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube"]
 HOME = Path(os.environ.get("CLIPFARM_HOME", Path.home() / ".clipfarm"))
 CLIENT_SECRET = HOME / "client_secret.json"
 TOKEN = HOME / "youtube_token.json"
@@ -98,3 +99,20 @@ def upload(
         if status and progress:
             progress(status.progress())
     return f"https://youtube.com/shorts/{response['id']}"
+
+
+def reschedule(video_id: str, publish_at: str) -> None:
+    """Henüz yayınlanmamış (planlı) bir videonun yayın zamanını değiştirir. publish_at: ISO 8601."""
+    from googleapiclient.discovery import build
+
+    youtube = build("youtube", "v3", credentials=_credentials(interactive=False), cache_discovery=False)
+    status = youtube.videos().list(part="status", id=video_id).execute()["items"][0]["status"]
+    youtube.videos().update(part="status", body={"id": video_id, "status": {
+        "privacyStatus": "private",
+        "publishAt": publish_at,
+        "selfDeclaredMadeForKids": status.get("selfDeclaredMadeForKids", False),
+        "embeddable": status.get("embeddable", True),
+        "license": status.get("license", "youtube"),
+        "publicStatsViewable": status.get("publicStatsViewable", True),
+    }}).execute()
+
