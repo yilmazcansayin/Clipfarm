@@ -62,6 +62,7 @@ def main() -> int:
         })
 
     _emit(out, {"phase": "extracting"})
+    info: dict = {}
     try:
         path = download(
             spec["url"], Path(spec["out_dir"]), spec.get("start"), spec.get("end"),
@@ -69,13 +70,13 @@ def main() -> int:
             name=spec["name"], referer=spec.get("referer") or None,
             cookiefile=Path(spec["cookiefile"]) if spec.get("cookiefile") else None,
             temp_dir=Path(spec["temp_dir"]) if spec.get("temp_dir") else None,
-            on_status=on_status,
+            on_status=on_status, info_out=info,
         )
     except BaseException as exc:  # noqa: BLE001 - her hatayı ana uygulamaya bildir
         msg = str(exc) or exc.__class__.__name__
         _emit(out, {"error": msg.replace("\x1b[0;31m", "").replace("\x1b[0m", "")})
         return 1
-    _emit(out, {"done": str(path)})
+    _emit(out, {"done": str(path), "duration": info.get("duration")})
     return 0
 
 

@@ -27,7 +27,7 @@ def home(tmp_path, monkeypatch):
 def test_run_falls_back_to_captured_sources(home, monkeypatch):
     calls = []
 
-    def fake_fetch(url, task, store, cookiefile, cancel):
+    def fake_fetch(url, task, store, cookiefile, cancel, **kw):
         calls.append((url, task.start, task.end, task.quality, task.referer))
         if "page" in url:
             raise RuntimeError("Unsupported URL")
@@ -44,7 +44,7 @@ def test_run_falls_back_to_captured_sources(home, monkeypatch):
 
 
 def test_run_reports_all_failures_with_hint(home, monkeypatch):
-    monkeypatch.setattr(downloads, "fetch", lambda *a: (_ for _ in ()).throw(RuntimeError("Unsupported URL: x")))
+    monkeypatch.setattr(downloads, "fetch", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("Unsupported URL: x")))
     store = downloads.Store()
     task = store.add(url="https://a", sources=["https://b"], quality="audio")
     downloads.run(task, store)
@@ -54,7 +54,7 @@ def test_run_reports_all_failures_with_hint(home, monkeypatch):
 def test_stalled_download_is_retried_then_next_source(home, monkeypatch):
     calls = []
 
-    def fake_fetch(url, *a):
+    def fake_fetch(url, *a, **kw):
         calls.append(url)
         raise downloads.Stalled("180 sn boyunca hiç ilerlemedi")
 
@@ -78,7 +78,7 @@ def test_interrupted_tasks_resume_once_and_duplicates_fail(home):
     again = downloads.Store()
     assert [t.id for t in again.interrupted] == [a.id]
     assert again.tasks[a.id].status == "queued"
-    assert again.tasks[b.id].status == "failed" and again.tasks[old.id].status == "failed"
+    assert again.tasks[b.id].status == "canceled" and again.tasks[old.id].status == "failed"
 
 
 def test_find_active_dedupes_repeat_clicks(home):
@@ -111,7 +111,7 @@ def test_cookie_file_is_netscape_format(tmp_path):
 def test_cookies_are_removed_after_download(home, monkeypatch):
     seen = {}
 
-    def fake_fetch(url, task, store, cookiefile, cancel):
+    def fake_fetch(url, task, store, cookiefile, cancel, **kw):
         seen["file"] = cookiefile
         assert cookiefile.exists()
         return home / "v.mp4"
@@ -158,7 +158,7 @@ def test_manager_cancel_queued_and_parallel_limit(home, monkeypatch):
     gate = threading.Event()
     started = []
 
-    def fake_fetch(url, task, store, cookiefile, cancel):
+    def fake_fetch(url, task, store, cookiefile, cancel, **kw):
         started.append(url)
         while not gate.is_set():
             if cancel.is_set():
@@ -234,3 +234,37 @@ def test_stalled_child_is_killed(home, monkeypatch):
     with pytest.raises(downloads.Stalled):
         downloads.fetch("https://a", task, store, None, threading.Event())
     assert time.time() - t0 < 15
+
+
+def test_short_range_is_recut_from_full_video(home, monkeypatch):
+    # yt-dlp aralığı sessizce kısa keserse (Pinterest HLS: 27 sn yerine 2 sn) tüm video indirilip kesilir.
+    calls = []
+
+    def fake_fetch(url, task, store, cookiefile, cancel, ranged=True, out_dir=None, meta=None):
+        calls.append(ranged)
+        if meta is not None:
+            meta["duration"] = 28.0
+        target = (out_dir or downloads.DOWNLOAD_DIR)
+        target.mkdir(parents=True, exist_ok=True)
+        f = target / ("clip_0-27.mp4" if ranged else "full.mp4")
+        f.write_bytes(b"short" if ranged else b"full")
+        return f
+
+    durations = {"clip_0-27.mp4": 2.0}
+    monkeypatch.setattr(downloads, "fetch", fake_fetch)
+    monkeypatch.setattr(downloads, "_duration", lambda p: durations.get(Path(p).name, 27.0))
+    import clipfarm.render as render
+    monkeypatch.setattr(render, "trim", lambda src, dst, s, e: dst.write_bytes(b"cut " + src.read_bytes()) or dst)
+    store = downloads.Store()
+    task = store.add(url="https://pin", start=0.0, end=27.0)
+    downloads.run(task, store)
+    assert task.status == "done" and calls == [True, False]
+    assert Path(task.file).read_bytes() == b"cut full"
+    assert not (home / "parts" / task.id).exists()
+
+
+def test_range_past_end_of_video_is_not_recut(home, monkeypatch):
+    monkeypatch.setattr(downloads, "_duration", lambda p: 9.5)
+    t = downloads.Task(id="x", url="u", start=50.0, end=80.0)
+    assert not downloads._range_too_short(Path("a.mp4"), t, 60.0)  # video 60 sn: beklenen 10, gelen 9.5
+    assert downloads._range_too_short(Path("a.mp4"), downloads.Task(id="y", url="u", start=0.0, end=27.0), 28.0)

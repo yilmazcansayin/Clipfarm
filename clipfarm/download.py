@@ -48,12 +48,14 @@ def download(
     cookiefile: Path | None = None,
     temp_dir: Path | None = None,
     on_status=None,
+    info_out: dict | None = None,
 ) -> Path:
     """Videoyu (istenirse yalnızca start-end aralığını) indirir ve dosya yolunu döner.
 
     progress: 0-1 arası ilerleme oranıyla çağrılır.
     on_status: yt-dlp'nin ilerleme sözlüğüyle çağrılır (hız, kalan süre, boyut).
     temp_dir: yarım dosyalar burada tutulur; yeniden denemede kaldığı yerden devam eder.
+    info_out: verilirse videonun tam süresi ("duration") buraya yazılır.
     """
     import yt_dlp
     from yt_dlp.utils import download_range_func
@@ -126,6 +128,8 @@ def download(
         info = ydl.extract_info(url, download=True)
         if info.get("_type") == "playlist" and info.get("entries"):
             info = next(e for e in info["entries"] if e)
+        if info_out is not None:
+            info_out["duration"] = info.get("duration")
         downloads = info.get("requested_downloads") or []
         if downloads and downloads[0].get("filepath"):
             return Path(downloads[0]["filepath"])

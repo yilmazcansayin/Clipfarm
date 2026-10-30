@@ -92,7 +92,9 @@ class Store:
             for d in sorted(rows, key=lambda d: d.get("created", 0)):
                 t = Task(**{k: v for k, v in d.items() if k in known})
                 if t.status in ACTIVE:
-                    if t.key() in seen or time.time() - t.created > RESUME_WITHIN:
+                    if t.key() in seen:
+                        t.status, t.phase, t.error = "canceled", "", "Aynı video için birden fazla basılmış; tek kopya indirildi."
+                    elif time.time() - t.created > RESUME_WITHIN:
                         t.status, t.error = "failed", "Uygulama kapandığı için yarıda kaldı."
                     else:
                         t.status, t.phase = "queued", ""
@@ -176,15 +178,20 @@ def _dir_size(path: Path) -> int:
     return total
 
 
-def fetch(url: str, task: Task, store: Store, cookiefile: Path | None, cancel: threading.Event) -> Path:
-    """Tek bir adresi ayrı süreçte indirir; iptal edilirse ya da takılırsa süreci sonlandırır."""
+def fetch(url: str, task: Task, store: Store, cookiefile: Path | None, cancel: threading.Event,
+          ranged: bool = True, out_dir: Path | None = None, meta: dict | None = None) -> Path:
+    """Tek bir adresi ayrı süreçte indirir; iptal edilirse ya da takılırsa süreci sonlandırır.
+
+    ranged=False: aralık verilse de tüm videoyu indirir. meta: videonun tam süresi ("duration") yazılır.
+    """
     tmp = PARTS_DIR / task.id
     tmp.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     name = (_safe_title(task.title) + " [%(id)s]") if _safe_title(task.title) else "%(title).80B [%(id)s]"
     spec = {
-        "url": url, "out_dir": str(DOWNLOAD_DIR), "temp_dir": str(tmp), "name": name,
-        "start": task.start, "end": task.end, "max_height": QUALITIES.get(task.quality),
+        "url": url, "out_dir": str(out_dir or DOWNLOAD_DIR), "temp_dir": str(tmp), "name": name,
+        "start": task.start if ranged else None, "end": task.end if ranged else None,
+        "max_height": QUALITIES.get(task.quality),
         "audio_only": task.quality == "audio", "referer": task.referer or None,
         "cookiefile": str(cookiefile) if cookiefile else None,
     }
@@ -226,6 +233,8 @@ def fetch(url: str, task: Task, store: Store, cookiefile: Path | None, cancel: t
                 last_change = now
                 if "done" in ev:
                     result = ev["done"]
+                    if meta is not None:
+                        meta["duration"] = ev.get("duration")
                 elif "error" in ev:
                     error = ev["error"]
                 else:
@@ -266,6 +275,45 @@ def _hint(message: str) -> str:
     return message
 
 
+def _duration(path: Path) -> float | None:
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+            capture_output=True, text=True, timeout=60,
+        ).stdout.strip()
+        return float(out)
+    except Exception:
+        return None
+
+
+def _range_too_short(path: Path, task: Task, source_duration: float | None) -> bool:
+    """Aralık indirmesi istenenden belirgin kısa mı? (bazı HLS akışlarında yt-dlp sessizce kısa kesiyor)"""
+    if task.start is None and task.end is None:
+        return False
+    start = task.start or 0.0
+    end = task.end if task.end is not None else source_duration
+    if source_duration:
+        end = min(end, source_duration) if end is not None else source_duration
+    if end is None:
+        return False
+    expected = end - start
+    actual = _duration(path)
+    return actual is not None and expected > 3 and actual < expected - max(2.0, expected * 0.1)
+
+
+def _cut_from_full(url: str, path: Path, task: Task, store: Store, cookiefile, cancel) -> None:
+    """Tüm videoyu geçici klasöre indirip istenen aralığı ffmpeg ile keser ve kısa dosyanın yerine koyar."""
+    from .render import trim
+
+    full_dir = PARTS_DIR / task.id / "full"
+    full = fetch(url, task, store, cookiefile, cancel, ranged=False, out_dir=full_dir)
+    task.phase = "processing"
+    store.save()
+    cut = full_dir / ("cut" + path.suffix)
+    trim(full, cut, task.start, task.end)
+    cut.replace(path)
+
+
 def run(task: Task, store: Store, cookies: list[dict] | None = None, cancel: threading.Event | None = None) -> None:
     cancel = cancel or threading.Event()
     task.status, task.progress, task.error, task.phase = "downloading", 0.0, "", "extracting"
@@ -284,10 +332,14 @@ def run(task: Task, store: Store, cookies: list[dict] | None = None, cancel: thr
         attempts = [task.url] + [s for s in task.sources if s != task.url]
         errors = []
         path = None
+        meta: dict = {}
         for url in attempts:
             for attempt in range(2):  # takılırsa bir kez daha (yarım dosyadan devam ederek) dene
                 try:
-                    path = fetch(url, task, store, cookiefile, cancel)
+                    got = fetch(url, task, store, cookiefile, cancel, meta=meta)
+                    if task.quality != "audio" and _range_too_short(got, task, meta.get("duration")):
+                        _cut_from_full(url, got, task, store, cookiefile, cancel)
+                    path = got
                     break
                 except Stalled as exc:
                     errors.append(f"{url[:80]}: {exc}")

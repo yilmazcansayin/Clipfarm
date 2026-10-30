@@ -39,6 +39,7 @@ class Handler(BaseHTTPRequestHandler):
     manager: downloads.Manager
     store: downloads.Store
     drive_login: dict = {"running": False, "error": ""}
+    restart = False
 
     def log_message(self, fmt, *args):  # sessiz
         pass
@@ -185,6 +186,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "running": True})
             threading.Thread(target=_drive_login, daemon=True).start()
             return self._json({"ok": True, "running": True})
+        if path == "/api/restart":
+            # Kod güncellendikten sonra yardımcıyı pencere açmadan yeniden başlatır (indirme sürerken olmaz).
+            if any(t.status in downloads.ACTIVE for t in self.store.list()):
+                return self._json({"error": "süren indirmeler var; bitince ya da iptal edince tekrar deneyin"}, 409)
+            self._json({"ok": True})
+            threading.Thread(target=_restart, args=(self.server,), daemon=True).start()
+            return
         if path == "/api/ytdlp/update":
             if not updater.update_in_background(force=True):
                 return self._json({"error": "güncelleme zaten sürüyor"}, 400)
@@ -288,6 +296,22 @@ def _safe_upload(job_id: str, clip_id: str, privacy: str | None, publish_at: str
     upload_clip(job, job.clip(clip_id), privacy, publish_at)
 
 
+def _restart(httpd) -> None:
+    time.sleep(0.5)  # yanıt gitsin
+    Handler.restart = True
+    httpd.shutdown()  # serve() döngüsü biter, yeni süreci serve() başlatır
+
+
+def _spawn_again(port: int) -> None:
+    import subprocess
+
+    from .winproc import popen_kwargs
+
+    subprocess.Popen([sys.executable, "-m", "clipfarm", "serve", "--port", str(port)],
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     close_fds=True, **popen_kwargs())
+
+
 def _drive_login() -> None:
     Handler.drive_login.update(running=True, error="")
     try:
@@ -331,7 +355,8 @@ def _keep_ytdlp_fresh() -> None:
 def serve(port: int = DEFAULT_PORT) -> None:
     from .winproc import hide_console_windows
 
-    if sys.stdout is None or sys.stderr is None:
+    hidden = sys.stdout is None or sys.stderr is None
+    if hidden:
         _log_to_file()
     logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(asctime)s %(message)s")
     hide_console_windows()
@@ -350,7 +375,8 @@ def serve(port: int = DEFAULT_PORT) -> None:
             "(eklentideki extension/shared.js dosyasındaki adresi de değiştirin)."
         )
     threading.Thread(target=_keep_ytdlp_fresh, daemon=True).start()
-    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} Clipfarm paneli: http://127.0.0.1:{port}  (durdurmak için Ctrl+C)")
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} Clipfarm paneli: http://127.0.0.1:{port}"
+          + ("" if hidden else "  (durdurmak için Ctrl+C)"))
     print(f"İndirilenler: {downloads.DOWNLOAD_DIR}")
     print(f"Claude: {'açık' if editor.available() else 'kapalı (ANTHROPIC_API_KEY yok)'} · "
           f"YouTube: {'bağlı' if youtube.is_connected() else 'bağlı değil'}")
@@ -358,3 +384,7 @@ def serve(port: int = DEFAULT_PORT) -> None:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
+    httpd.server_close()
+    if Handler.restart:
+        print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} Yeniden başlatılıyor…")
+        _spawn_again(port)
