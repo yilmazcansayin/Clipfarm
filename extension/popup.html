@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 380px; margin: 0; padding: 12px; background: #0f1115; color: #e8eaf0; font: 13px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 15px; margin: 0; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #8b93a7; margin: 14px 0 6px; }
+  .top { display: flex; align-items: center; gap: 8px; }
+  .top span { flex: 1; text-align: right; font-size: 11px; color: #8b93a7; }
+  .item { border: 1px solid #262b36; border-radius: 8px; padding: 7px 9px; margin-bottom: 6px; }
+  .item .u { font-size: 11px; color: #8b93a7; word-break: break-all; max-height: 30px; overflow: hidden; }
+  .item .u.err { color: #ff6b6b; max-height: 64px; white-space: pre-wrap; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .row + .row { margin-top: 4px; }
+  .name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  button, select, input[type=text] { font: inherit; color: inherit; background: #262b36; border: 0; border-radius: 7px; padding: 5px 9px; }
+  button, select { cursor: pointer; }
+  button:hover { background: #313745; }
+  button.p { background: #ff3b5c; color: #fff; font-weight: 600; }
+  button.p:hover { background: #ff5572; }
+  button.mini { padding: 2px 7px; font-size: 12px; }
+  input[type=text] { flex: 1; min-width: 0; background: #0c0e12; border: 1px solid #262b36; }
+  label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .bar { height: 4px; background: #262b36; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+  .bar i { display: block; height: 100%; background: #ff3b5c; transition: width .4s; }
+  .bar.busy i { width: 30% !important; animation: slide 1.2s infinite linear; }
+  .bar.drive i { background: #4c8bf5; }
+  @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
+  .ok { color: #2ecc71; } .err { color: #ff6b6b; } .warn { color: #f5a623; } .muted { color: #8b93a7; font-size: 12px; }
+  a { color: #7aa7ff; }
+  #msg { min-height: 16px; font-size: 12px; color: #f5a623; }
+  details { border: 1px solid #262b36; border-radius: 8px; padding: 6px 9px; margin-top: 12px; }
+  summary { cursor: pointer; color: #8b93a7; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  details .row { margin: 7px 0; }
+</style>
+</head>
+<body>
+  <div class="top"><h1>🎬 Clipfarm</h1><span id="server">…</span></div>
+
+  <h2>Link ile indir</h2>
+  <div class="row">
+    <input type="text" id="link" placeholder="TikTok, YouTube, Instagram, X… linkini yapıştır">
+  </div>
+  <div class="row">
+    <select id="quality">
+      <option value="best">En iyi</option><option value="1080">1080p</option><option value="720">720p</option>
+      <option value="480">480p</option><option value="audio">Sadece ses</option>
+    </select>
+    <label class="muted"><input type="checkbox" id="linkDrive"> Drive'a da</label>
+    <span style="flex:1"></span>
+    <button class="p" id="go">İndir</button>
+  </div>
+  <div id="msg"></div>
+
+  <h2>İndirmeler</h2>
+  <div id="downloads" class="muted">…</div>
+
+  <h2>Bu sayfada yakalanan videolar</h2>
+  <div id="media" class="muted">Henüz yok. Videonun üstündeki <b>⬇ İndir</b> düğmesini kullan ya da videoyu oynat.</div>
+
+  <details id="settings">
+    <summary>Ayarlar ve Google Drive</summary>
+    <div class="row"><label><input type="checkbox" data-set="drive_upload"> Her indirmeyi Google Drive'a da kaydet</label></div>
+    <div class="row"><label><input type="checkbox" data-set="drive_delete_local"> Drive'a kaydedince bilgisayardan sil (yer açar)</label></div>
+    <div class="row muted">Drive klasörü: <input type="text" data-set="drive_folder" style="max-width:120px"></div>
+    <div class="row" id="driveState">…</div>
+    <div class="row">Aynı anda indirme
+      <select data-set="parallel"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    </div>
+    <div class="row"><label><input type="checkbox" data-set="use_cookies"> Giriş gerektiren videolar için tarayıcı oturumunu kullan</label></div>
+    <div class="row"><span id="ytdlp" class="muted">yt-dlp …</span><button class="mini" id="update">Güncelle</button></div>
+    <div class="row muted" id="folder"></div>
+  </details>
+
+  <h2>Shorts</h2>
+  <div class="row">
+    <select id="count"><option>3</option><option selected>5</option><option>8</option></select>
+    <button class="p" id="auto" title="Bu sayfadaki uzun yayında en iyi anları bulup Shorts üretir">En iyi anlardan Shorts üret</button>
+    <button id="panel">Panel</button>
+  </div>
+  <div id="smsg" class="muted"></div>
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

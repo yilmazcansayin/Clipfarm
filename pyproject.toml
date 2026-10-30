@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clipfarm"
+version = "0.4.0"
+description = "Yayın kesitlerinden dikey, altyazılı YouTube Shorts üretme aracı"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "yt-dlp[default,curl-cffi]>=2025.1.1",  # curl-cffi: TikTok gibi tarayıcı taklidi isteyen siteler
+  "faster-whisper>=1.0",
+  "av>=11,<17",  # faster-whisper 1.2 PyAV 17+ ile açılmıyor (metadata_errors)
+  "numpy",
+  "anthropic>=2.0",
+  "google-api-python-client>=2.100",
+  "google-auth-oauthlib>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+clipfarm = "clipfarm.cli:main"
+
+[tool.setuptools]
+packages = ["clipfarm"]
+
+[tool.setuptools.package-data]
+clipfarm = ["web/*.html", "fonts/*"]
