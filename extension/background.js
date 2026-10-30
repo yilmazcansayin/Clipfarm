@@ -3,8 +3,10 @@ importScripts("shared.js");
 // --- Sayfadaki video akışlarını yakalama (m3u8 / mpd / mp4 / webm) ---
 const MEDIA_RE = /\.(m3u8|mpd|mp4|webm|m4v|mov)(\?|#|$)/i;
 const MEDIA_TYPES = /^(video\/|application\/(vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))/i;
-// YouTube'un parça istekleri ve reklam/izleme adresleri listeyi kirletmesin.
-const SKIP_RE = /googlevideo\.com|doubleclick|googlesyndication|\.ts(\?|$)|\.m4s(\?|$)|[?&]range=|\/seg-\d|segment/i;
+// YouTube'un parça istekleri, HLS/DASH parçaları ve reklam/izleme adresleri listeyi kirletmesin.
+const SKIP_RE = /googlevideo\.com|doubleclick|googlesyndication|\.(ts|m4s|cmfv|cmfa|aac|m4a)(\?|$)|[?&]range=|\/seg-\d|segment/i;
+// Kendi çözücüsü olan siteler: sayfa adresi yeterli, yakalanan akışlar başka videoya ait olabilir.
+const KNOWN_RE = /(^|\.)(youtube\.com|youtu\.be|tiktok\.com|instagram\.com|twitter\.com|x\.com|twitch\.tv|kick\.com|facebook\.com|reddit\.com|vimeo\.com|dailymotion\.com|pinterest\.[a-z.]+|pin\.it|bilibili\.com|soundcloud\.com|streamable\.com|rumble\.com)$/i;
 
 async function getMedia(tabId) {
   const key = "media:" + tabId;
@@ -46,6 +48,26 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 });
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove("media:" + tabId));
 
+// Önce ana listeler (master), sonra diğer akışlar, en son büyükten küçüğe dosyalar.
+function rankMedia(list) {
+  const score = (m) => (/master/i.test(m.url) ? 0 : m.kind !== "Dosya" ? 1 : 2);
+  return [...list].sort((a, b) => score(a) - score(b) || (b.size || 0) - (a.size || 0));
+}
+
+// Giriş gerektiren videolar (Instagram, yaş sınırlı YouTube…) için sayfanın çerezleri yalnızca
+// bilgisayardaki Clipfarm uygulamasına gider ve indirme bitince silinir.
+async function cookiesFor(url) {
+  try {
+    if (!/^https?:/i.test(url)) return [];
+    return (await chrome.cookies.getAll({ url })).slice(0, 300).map((c) => ({
+      domain: c.domain, hostOnly: c.hostOnly, path: c.path, secure: c.secure, httpOnly: c.httpOnly,
+      expirationDate: c.expirationDate, name: c.name, value: c.value,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // --- Yerel Clipfarm sunucusuyla konuşma ---
 async function api(path, body) {
   const r = await fetch(SERVER + path, body === undefined ? {} : {
@@ -58,7 +80,34 @@ async function api(path, body) {
   return data;
 }
 
-const OFFLINE = "Clipfarm yardımcı uygulaması çalışmıyor. Bilgisayarında `clipfarm serve` komutunu başlat.";
+const OFFLINE = "Clipfarm yardımcı uygulaması çalışmıyor. Masaüstündeki \"Clipfarm Baslat\" ile başlatın.";
+
+async function startDownload(msg, sender, tabId) {
+  const url = msg.url;
+  let host = "";
+  try { host = new URL(url).hostname; } catch { throw new Error("Geçersiz adres."); }
+  const direct = msg.direct && /^https?:/i.test(msg.direct) ? msg.direct : null;
+  const captured = KNOWN_RE.test(host) || msg.noCaptured ? [] : rankMedia(await getMedia(tabId)).map((m) => m.url);
+  const sources = [...new Set([direct, ...captured].filter((s) => s && s !== url))];
+  const referer = msg.referer || sender.tab?.url || "";
+  const payload = {
+    url, sources, referer, title: msg.title || "", start: msg.start ?? null, end: msg.end ?? null,
+    quality: msg.quality || "best", cookies: await cookiesFor(url),
+  };
+  if (msg.drive !== undefined && msg.drive !== null) payload.drive = !!msg.drive;
+  try {
+    const task = await api("/api/downloads", payload);
+    return { ok: true, via: "server", duplicate: !!task.duplicate };
+  } catch (e) {
+    // Sunucu kapalıysa ve elimizde doğrudan bir dosya adresi varsa tüm videoyu Chrome ile indir.
+    const file = direct && !/\.(m3u8|mpd)/i.test(direct) ? direct : null;
+    if (e instanceof TypeError && file && msg.start == null && msg.end == null) {
+      await chrome.downloads.download({ url: file, saveAs: false });
+      return { ok: true, via: "chrome" };
+    }
+    throw e instanceof TypeError ? new Error(OFFLINE) : e;
+  }
+}
 
 async function handle(msg, sender) {
   const tabId = msg.tabId ?? sender.tab?.id;
@@ -66,30 +115,21 @@ async function handle(msg, sender) {
     case "status":
       return api("/api/status");
     case "media":
-      return getMedia(tabId);
+      return rankMedia(await getMedia(tabId));
     case "downloads":
       return api("/api/downloads");
+    case "task": // reveal, cancel, retry, drive, forget
+      return api(`/api/downloads/${encodeURIComponent(msg.id)}/${msg.action}`, {});
     case "reveal":
-      return api(`/api/downloads/${msg.id}/reveal`, {});
-    case "download": {
-      const sources = [msg.direct, ...(await getMedia(tabId)).map((m) => m.url)].filter(Boolean);
-      const payload = {
-        url: msg.url, sources, referer: msg.referer || sender.tab?.url || "",
-        title: msg.title || "", start: msg.start ?? null, end: msg.end ?? null, quality: msg.quality || "best",
-      };
-      try {
-        await api("/api/downloads", payload);
-        return { ok: true, via: "server" };
-      } catch (e) {
-        // Sunucu kapalıysa ve elimizde doğrudan bir dosya adresi varsa tüm videoyu Chrome ile indir.
-        const direct = msg.direct && !/\.(m3u8|mpd)/i.test(msg.direct) ? msg.direct : null;
-        if (e instanceof TypeError && direct && msg.start == null && msg.end == null) {
-          await chrome.downloads.download({ url: direct, saveAs: false });
-          return { ok: true, via: "chrome" };
-        }
-        throw e instanceof TypeError ? new Error(OFFLINE) : e;
-      }
-    }
+      return api(`/api/downloads/${encodeURIComponent(msg.id)}/reveal`, {});
+    case "download":
+      return startDownload(msg, sender, tabId);
+    case "settings":
+      return msg.changes ? api("/api/settings", msg.changes) : api("/api/settings");
+    case "driveLogin":
+      return api("/api/drive/login", {});
+    case "ytdlpUpdate":
+      return api("/api/ytdlp/update", {});
     case "shorts":
       return api("/api/jobs", { url: msg.url, ranges: msg.ranges || null, count: msg.count || 5, layout: msg.layout || "blur" });
     case "image":

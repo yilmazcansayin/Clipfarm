@@ -6,6 +6,7 @@
   clipfarm make indirilen.mp4 --layout split --cam 0.72,0.02,0.27,0.3
   clipfarm auto "https://www.twitch.tv/videos/2299..." --count 5
   clipfarm serve        # panel + Chrome eklentisi için yerel sunucu
+  clipfarm autostart on # Windows açılınca sunucu pencere açmadan kendiliğinden başlasın
 """
 
 from __future__ import annotations
@@ -175,6 +176,22 @@ def cmd_serve(args: argparse.Namespace) -> None:
     serve(args.port)
 
 
+def cmd_autostart(args: argparse.Namespace) -> None:
+    from .autostart import disable, enable
+
+    if args.state == "on":
+        print(f"Açılışta başlatma eklendi: {enable()}")
+    else:
+        print("Açılışta başlatma kaldırıldı." if disable() else "Zaten kapalıydı.")
+
+
+def cmd_drive_login(args: argparse.Namespace) -> None:
+    from .drive import login
+
+    login()
+    print("Google Drive bağlandı.")
+
+
 def cmd_youtube_login(args: argparse.Namespace) -> None:
     from .youtube import login
 
@@ -264,6 +281,13 @@ def build_parser() -> argparse.ArgumentParser:
     sv = sub.add_parser("serve", help="panel ve Chrome eklentisi için yerel sunucuyu başlat")
     sv.add_argument("--port", type=int, default=DEFAULT_PORT)
     sv.set_defaults(func=cmd_serve)
+
+    au = sub.add_parser("autostart", help="Windows açılınca sunucuyu pencere açmadan başlat (on/off)")
+    au.add_argument("state", choices=("on", "off"))
+    au.set_defaults(func=cmd_autostart)
+
+    dl = sub.add_parser("drive-login", help="indirilenleri kaydetmek için Google Drive'ı bağla (bir kez)")
+    dl.set_defaults(func=cmd_drive_login)
 
     yl = sub.add_parser("youtube-login", help="YouTube hesabını bağla (bir kez)")
     yl.set_defaults(func=cmd_youtube_login)

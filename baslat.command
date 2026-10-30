@@ -8,5 +8,5 @@ if [ ! -d .venv ]; then
 else
   source .venv/bin/activate
 fi
-pip install -q -U yt-dlp
+pip install -q -U "yt-dlp[default,curl-cffi]"
 clipfarm serve

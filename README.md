@@ -21,7 +21,9 @@ Chrome eklentisi ──► yerel Clipfarm yardımcısı (127.0.0.1:38765)
 
 Python 3.10+ ve ffmpeg gerekir.
 
-**En kolay yol:** Repoyu indirin. Windows'ta `baslat.bat`, macOS'ta `baslat.command` dosyasına çift tıklayın. İlk çalıştırmada kurulum yapılır, sonra yardımcı uygulama açılır. İndirmeler ve Shorts için bu pencere açık kalmalı.
+**En kolay yol:** Repoyu indirin. Windows'ta `baslat.bat`, macOS'ta `baslat.command` dosyasına çift tıklayın. İlk çalıştırmada kurulum yapılır, sonra yardımcı uygulama arka planda başlar.
+
+Windows'ta yardımcı **pencere açmadan** çalışır ve `baslat.bat` onu Windows açılışına da ekler (`clipfarm autostart on`/`off`). Elle başlatmak için `Clipfarm Baslat.vbs` dosyasına çift tıklayın. Çıktılar `~/.clipfarm/server.log` dosyasına, her indirmenin ayrıntılı günlüğü `~/.clipfarm/logs/` klasörüne yazılır.
 
 Elle kurulum:
 
@@ -34,7 +36,7 @@ python -m venv .venv
 pip install -e .
 ```
 
-İlk altyazı işleminde Whisper modeli (small ≈ 500 MB) bir kez indirilir. Siteler değiştikçe indirici de güncellenir, bu yüzden ara sıra `pip install -U yt-dlp` çalıştırın.
+İlk altyazı işleminde Whisper modeli (small ≈ 500 MB) bir kez indirilir. Siteler değiştikçe indirici de değişmeli: yardımcı, `yt-dlp`'yi (ve TikTok gibi siteler için gereken `curl_cffi`'yi) günde bir kez arka planda kendisi günceller. Eklentinin ayarlarındaki **Güncelle** düğmesiyle hemen de güncelleyebilirsiniz.
 
 ### Claude (an seçimi ve başlıklar için önerilir)
 
@@ -68,7 +70,7 @@ Chrome Web Mağazası YouTube indirme eklentilerine izin vermediği için eklent
 ## Kullanım
 
 ```bash
-clipfarm serve        # yardımcıyı başlatın ve açık bırakın (baslat.bat / baslat.command aynısını yapar)
+clipfarm serve        # yardımcıyı başlatın (baslat.bat / Clipfarm Baslat.vbs bunu pencere açmadan yapar)
 ```
 
 ### Video indirme
@@ -78,9 +80,24 @@ clipfarm serve        # yardımcıyı başlatın ve açık bırakın (baslat.bat
 3. **Klip al:** başlangıç ve bitişi yazın (`1:02:30` biçiminde) ya da videoyu istediğiniz yere getirip **⏱ şu an**'a basın. **Son 30 sn**, **Son 1 dk** ve **Buradan 1 dk** kısayolları da var. **Klibi indir** yalnızca o aralığı indirir.
 4. **Shorts yap:** seçili aralıktan (en fazla 3 dk) dikey, altyazılı Shorts üretir.
 
-Dosyalar `İndirilenler/Clipfarm` klasörüne kaydedilir (`CLIPFARM_DOWNLOADS` ile değiştirilebilir). Eklenti simgesine tıklayınca indirmelerin ilerlemesi ve **Göster** düğmesi görünür. Sayfa videoyu tanınmayan bir oynatıcıyla açıyorsa, eklenti oynatma sırasında geçen video akışlarını (m3u8, mpd, mp4) yakalar. Simgedeki sayı bunları gösterir; liste popup'ta durur ve indirme bu adreslerle tekrar denenir.
+Dosyalar `İndirilenler/Clipfarm` klasörüne kaydedilir (`CLIPFARM_DOWNLOADS` ile değiştirilebilir). TikTok, Instagram ve X akışlarında (For You, Reels, zaman akışı) düğme, o an izlenen videonun kendi adresini bulur.
 
-YouTube'da yaş kısıtlı veya üyelere özel videolar için yt-dlp'nin tarayıcı çerezlerini kullanması gerekebilir: `clipfarm get <adres> --cookies-from-browser chrome`.
+Eklenti simgesine tıklayınca açılan pencerede:
+
+- **Link ile indir:** bir video linkini yapıştırıp indirin. Video sayfasındaysanız link kendiliğinden dolar.
+- **İndirmeler:** hız, kalan süre ve ilerleme; **İptal**, **Tekrar dene**, **Göster**, **Drive'a gönder**. Aynı anda 3 indirme yapılır (ayarlardan 1–5). Aynı videoya iki kez basılırsa ikinci bir kopya açılmaz.
+- **Yakalanan videolar:** sayfa videoyu tanınmayan bir oynatıcıyla açıyorsa, eklenti oynatma sırasında geçen video akışlarını (m3u8, mpd, mp4) yakalar. Simgedeki sayı bunları gösterir ve indirme bu adreslerle de denenir.
+
+Sağlamlık: Her indirme ayrı bir süreçte çalışır. Bağlantı kopunca parçalar yeniden denenir. Bir indirme 2–3 dakika hiç ilerlemezse durdurulup kaldığı yerden bir kez daha denenir, olmazsa açık bir hata mesajıyla biter; hiçbir indirme sonsuza kadar "takılı" kalmaz. Bilgisayar kapanırsa yarım kalan indirmeler yardımcı yeniden açılınca kaldığı yerden devam eder.
+
+Giriş gerektiren videolar (Instagram, yaş kısıtlı YouTube…): Ayarlarda "tarayıcı oturumunu kullan" açıksa, eklenti o sitenin çerezlerini yalnızca bilgisayardaki yardımcıya verir. Çerezler indirme bitince silinir, hiçbir yere kaydedilmez.
+
+### Google Drive'a kaydetme
+
+Eklenti penceresindeki **Ayarlar ve Google Drive** bölümünden "Her indirmeyi Google Drive'a da kaydet"i açın; videonun üstündeki panelde de **Google Drive'a da kaydet** kutusu var. "Drive'a kaydedince bilgisayardan sil" açıkken, dosya Drive'a eksiksiz yüklendikten sonra bilgisayardaki kopya silinir.
+
+- **Google Drive masaüstü** kuruluysa (`G:\My Drive`) dosya oradaki `Clipfarm` klasörüne kopyalanır, Drive uygulaması buluta yükler. Ek ayar gerekmez.
+- Kurulu değilse **Google Drive'a bağlan**'a basın (ya da `clipfarm drive-login`). YouTube için kullanılan `client_secret.json` kullanılır; Google Cloud projesinde **Google Drive API** etkin olmalı (Cloud Console → API'ler ve Hizmetler → Kitaplık → Google Drive API → Etkinleştir). Uygulama yalnızca kendi yüklediği dosyaları görebilir (`drive.file` izni). Büyük dosyalar parça parça, kopan yerden devam ederek yüklenir.
 
 ### Shorts
 

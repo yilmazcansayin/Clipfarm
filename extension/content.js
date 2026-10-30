@@ -17,13 +17,60 @@
     return t.split(":").reduce((acc, p) => acc * 60 + parseFloat(p), 0);
   };
 
-  function pageUrl() {
+  // Akış sayfalarında (TikTok For You, Instagram, X) adres çubuğu izlenen videoyu göstermez;
+  // videonun çevresindeki bağlantıdan asıl video adresini buluruz.
+  function nearLink(video, re, depth = 14) {
+    let el = video;
+    for (let i = 0; el && i < depth; i++, el = el.parentElement) {
+      for (const a of el.querySelectorAll ? el.querySelectorAll("a[href]") : []) {
+        const href = a.getAttribute("href");
+        if (re.test(href)) return new URL(href, location.origin).href.split("?")[0];
+      }
+    }
+    return null;
+  }
+
+  function tiktokUrl(video) {
+    // Oynatıcı kutusunun kimliğinde video numarası var (xgwrapper-0-<id>); en güvenilir kaynak bu.
+    let el = video;
+    for (let i = 0; el && i < 8; i++, el = el.parentElement) {
+      const id = (el.id || "").match(/(?:^|[-_])(\d{15,25})$/);
+      if (id) {
+        const box = el.closest('[data-e2e*="item"], article, section') || el.parentElement || el;
+        const user = box.querySelector?.('a[href^="/@"]')?.getAttribute("href")?.match(/^\/(@[\w.-]+)/)?.[1] || "@";
+        return `https://www.tiktok.com/${user}/video/${id[1]}`;
+      }
+    }
+    const here = location.pathname.match(/^\/(@[\w.-]*)\/(?:video|photo)\/(\d+)/);
+    if (here) return `https://www.tiktok.com/${here[1]}/video/${here[2]}`;
+    const embed = location.pathname.match(/^\/embed\/(?:v2\/)?(\d+)/);
+    if (embed) return `https://www.tiktok.com/@/video/${embed[1]}`;
+    return video ? nearLink(video, /\/@[\w.-]*\/video\/\d+/, 10) : null;
+  }
+
+  function pageUrl(video) {
     const u = new URL(location.href);
+    const host = u.hostname.replace(/^www\.|^m\./, "");
     // YouTube: /watch, /shorts/ID, /live/ID ve gömülü oynatıcılar yt-dlp'nin anladığı biçime getirilir.
     if (/(^|\.)youtube\.com$/.test(u.hostname)) {
       const m = u.pathname.match(/^\/(shorts|live|embed)\/([\w-]{6,})/);
       if (m) return "https://www.youtube.com/watch?v=" + m[2];
       if (u.searchParams.get("v")) return "https://www.youtube.com/watch?v=" + u.searchParams.get("v");
+    }
+    if (host.endsWith("tiktok.com")) {
+      const t = tiktokUrl(video);
+      if (t) return t;
+    }
+    if (host.endsWith("instagram.com")) {
+      const m = u.pathname.match(/^\/(?:[\w.]+\/)?(reels?|p|tv)\/([\w-]+)/);
+      if (m) return `https://www.instagram.com/${m[1] === "reels" ? "reel" : m[1]}/${m[2]}/`;
+      const found = video && nearLink(video, /^\/(?:[\w.]+\/)?(reel|p|tv)\/[\w-]+\/?$/, 18);
+      if (found) return found;
+    }
+    if (host === "x.com" || host === "twitter.com") {
+      const art = video?.closest("article");
+      const a = art && [...art.querySelectorAll('a[href*="/status/"]')].find((x) => /\/status\/\d+$/.test(x.getAttribute("href")));
+      if (a) return new URL(a.getAttribute("href"), location.origin).href;
     }
     ["t", "start", "si", "pp", "feature", "list", "index"].forEach((k) => u.searchParams.delete(k));
     return u.toString();
@@ -71,6 +118,8 @@
     .msg.ok { color: #2ecc71; } .msg.err { color: #ff6b6b; }
     .x { position: absolute; top: 8px; right: 10px; cursor: pointer; color: #8b93a7; }
     .muted { color: #8b93a7; font-size: 11px; }
+    .chk { color: #c9cedb; font-size: 12px; cursor: pointer; }
+    .chk input { width: auto; margin: 0; }
   </style>
   <button class="btn" id="btn" title="Clipfarm ile indir">⬇ İndir</button>
   <div class="panel" id="panel">
@@ -83,6 +132,7 @@
       </select>
       <button class="s p" id="all">Tümünü indir</button>
     </div>
+    <label class="row chk"><input type="checkbox" id="drive"> Google Drive'a da kaydet</label>
     <hr>
     <b>Klip al</b> <span class="muted" id="dur"></span>
     <div class="row"><span class="lbl">Başlangıç</span><input id="start" placeholder="0:00"><button class="s" data-now="start">⏱ şu an</button></div>
@@ -165,6 +215,12 @@
     if (!$("start").value) $("start").value = fmt(Math.max(0, panelVideo.currentTime - 30));
     if (!$("end").value) $("end").value = fmt(panelVideo.currentTime);
     say("");
+    // Kalite ve Drive tercihleri hatırlanır; Drive'ın varsayılanı ayarlardan gelir.
+    chrome.storage.local.get(["quality", "drive"], (saved) => {
+      if (saved.quality) $("quality").value = saved.quality;
+      if (typeof saved.drive === "boolean") $("drive").checked = saved.drive;
+      else send({ type: "settings" }).then((r) => { if (r.ok) $("drive").checked = !!r.data.drive_upload; });
+    });
     panel.style.display = "block";
     panel.style.left = Math.max(8, Math.min(r.right - 310, innerWidth - 310)) + "px";
     panel.style.top = Math.max(8, Math.min(r.top + 48, innerHeight - panel.offsetHeight - 8)) + "px";
@@ -181,6 +237,8 @@
     openPanel();
   });
   $("close").addEventListener("click", () => (panel.style.display = "none"));
+  $("quality").addEventListener("change", () => chrome.storage.local.set({ quality: $("quality").value }));
+  $("drive").addEventListener("change", () => chrome.storage.local.set({ drive: $("drive").checked }));
 
   root.addEventListener("click", (e) => {
     const b = e.target.closest("button");
@@ -201,14 +259,16 @@
   async function download(clip) {
     try {
       const msg = {
-        type: "download", url: pageUrl(), direct: directSrc(panelVideo), referer: location.href,
-        title: document.title, quality: $("quality").value,
+        type: "download", url: pageUrl(panelVideo), direct: directSrc(panelVideo), referer: location.href,
+        title: document.title, quality: $("quality").value, drive: $("drive").checked,
       };
       if (clip) Object.assign(msg, range());
       say("Gönderiliyor…");
       const r = await send(msg);
       if (!r.ok) throw new Error(r.error);
-      say(r.data.via === "chrome" ? "Chrome indirmelerine eklendi." : "İndirme başladı. İlerlemeyi eklenti simgesinden izleyebilirsin.", "ok");
+      say(r.data.via === "chrome" ? "Chrome indirmelerine eklendi."
+        : r.data.duplicate ? "Bu video zaten iniyor. İlerlemeyi eklenti simgesinden izleyebilirsin."
+        : "İndirme başladı. İlerlemeyi eklenti simgesinden izleyebilirsin.", "ok");
     } catch (err) {
       say(err.message, "err");
     }
@@ -220,7 +280,7 @@
     try {
       const { start, end } = range();
       if (end - start > 180) throw new Error("Shorts en fazla 3 dakika olabilir.");
-      const r = await send({ type: "shorts", url: pageUrl(), ranges: [[start, end]] });
+      const r = await send({ type: "shorts", url: pageUrl(panelVideo), ranges: [[start, end]] });
       if (!r.ok) throw new Error(r.error);
       say("Shorts sıraya alındı. Paneli eklenti simgesinden açabilirsin.", "ok");
     } catch (err) {

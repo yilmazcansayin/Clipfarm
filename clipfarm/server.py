@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import json
+import logging
 import mimetypes
 import re
 import sys
+import threading
+import time
+import urllib.request
 from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 from pathlib import Path
 from urllib.parse import urlparse
 
-from . import DEFAULT_PORT, __version__, downloads, editor, youtube
+from . import DEFAULT_PORT, __version__, downloads, drive, editor, settings, updater, youtube
 from .pipeline import JOBS_DIR, Job, Options, Worker, list_jobs, render_clip, run_job, upload_clip
 
 EDITABLE = ("hook", "title", "description", "tags")
@@ -32,8 +36,9 @@ def _summary(job: Job, full: bool = False) -> dict:
 class Handler(BaseHTTPRequestHandler):
     server_version = f"clipfarm/{__version__}"
     worker: Worker
-    dl_worker: Worker
+    manager: downloads.Manager
     store: downloads.Store
+    drive_login: dict = {"running": False, "error": ""}
 
     def log_message(self, fmt, *args):  # sessiz
         pass
@@ -89,10 +94,18 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(html)
         elif path == "/api/status":
+            prefs = settings.load()
             self._json({
                 "ok": True, "version": __version__,
                 "claude": editor.available(), "youtube": youtube.is_connected(),
+                "ytdlp": updater.ytdlp_version(), "impersonate": updater.has_impersonation(),
+                "updating": updater.state["running"], "update_error": updater.state["error"],
+                "drive": {**drive.status(prefs), "login_running": self.drive_login["running"],
+                          "login_error": self.drive_login["error"]},
+                "download_dir": str(downloads.DOWNLOAD_DIR),
             })
+        elif path == "/api/settings":
+            self._json(settings.load())
         elif path == "/api/jobs":
             self._json([_summary(j) for j in list_jobs()[:50]])
         elif path == "/api/downloads":
@@ -112,27 +125,69 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         if path == "/api/downloads":
             url = (body.get("url") or "").strip()
-            if not url:
-                return self._json({"error": "url gerekli"}, 400)
+            if not re.match(r"^https?://", url, re.I):
+                return self._json({"error": "geçerli bir video adresi (https://…) gerekli"}, 400)
             quality = body.get("quality") or "best"
             if quality not in downloads.QUALITIES:
                 return self._json({"error": f"geçersiz kalite: {quality}"}, 400)
-            start, end = body.get("start"), body.get("end")
-            if start is not None and end is not None and float(end) <= float(start):
+            try:
+                start, end = body.get("start"), body.get("end")
+                start = None if start is None else float(start)
+                end = None if end is None else float(end)
+            except (TypeError, ValueError):
+                return self._json({"error": "başlangıç/bitiş sayı olmalı"}, 400)
+            if start is not None and end is not None and end <= start:
                 return self._json({"error": "bitiş, başlangıçtan sonra olmalı"}, 400)
+            if existing := self.store.find_active(url, start, end, quality):
+                return self._json({**asdict(existing), "duplicate": True})
+            prefs = settings.load()
             task = self.store.add(
                 url=url, sources=[s for s in body.get("sources") or [] if isinstance(s, str)][:10],
                 referer=body.get("referer") or "", title=body.get("title") or "",
-                start=None if start is None else float(start), end=None if end is None else float(end),
-                quality=quality,
+                start=start, end=end, quality=quality,
+                drive=bool(body["drive"]) if "drive" in body else prefs["drive_upload"],
             )
-            self.dl_worker.submit(lambda: downloads.run(task, self.store))
+            cookies = body.get("cookies") if prefs["use_cookies"] else None
+            self.manager.submit(task, [c for c in cookies or [] if isinstance(c, dict)][:300])
             return self._json(asdict(task), 201)
-        if m := re.fullmatch(r"/api/downloads/([\w-]+)/reveal", path):
+        if m := re.fullmatch(r"/api/downloads/([\w-]+)/(reveal|cancel|retry|drive|forget)", path):
             task = self.store.tasks.get(m[1])
-            if not task or not task.file:
-                return self._json({"error": "dosya yok"}, 404)
-            downloads.reveal(task.file)
+            if not task:
+                return self._json({"error": "indirme bulunamadı"}, 404)
+            action = m[2]
+            if action == "reveal":
+                if not task.file:
+                    return self._json({"error": "dosya yok"}, 404)
+                downloads.reveal(task.file)
+            elif action == "cancel":
+                if not self.manager.cancel(task.id):
+                    return self._json({"error": "bu indirme zaten bitmiş"}, 400)
+            elif action == "retry":
+                if task.status in downloads.ACTIVE:
+                    return self._json({"error": "indirme zaten sürüyor"}, 400)
+                self.manager.submit(task)
+            elif action == "drive":
+                if task.status != "done" or task.local_deleted or not Path(task.file).exists():
+                    return self._json({"error": "Drive'a gönderilecek dosya yok"}, 400)
+                if task.drive_status == "uploading":
+                    return self._json({"error": "zaten yükleniyor"}, 400)
+                self.manager.drive(task)
+            elif action == "forget":
+                if task.status in downloads.ACTIVE:
+                    return self._json({"error": "önce iptal edin"}, 400)
+                self.store.tasks.pop(task.id, None)
+                self.store.save()
+            return self._json({"ok": True, **asdict(task)})
+        if path == "/api/settings":
+            return self._json(settings.update(body))
+        if path == "/api/drive/login":
+            if self.drive_login["running"]:
+                return self._json({"ok": True, "running": True})
+            threading.Thread(target=_drive_login, daemon=True).start()
+            return self._json({"ok": True, "running": True})
+        if path == "/api/ytdlp/update":
+            if not updater.update_in_background(force=True):
+                return self._json({"error": "güncelleme zaten sürüyor"}, 400)
             return self._json({"ok": True})
         if path == "/api/jobs":
             url = (body.get("url") or "").strip()
@@ -233,16 +288,59 @@ def _safe_upload(job_id: str, clip_id: str, privacy: str | None, publish_at: str
     upload_clip(job, job.clip(clip_id), privacy, publish_at)
 
 
+def _drive_login() -> None:
+    Handler.drive_login.update(running=True, error="")
+    try:
+        drive.login()
+    except Exception as exc:
+        Handler.drive_login["error"] = str(exc)[:300]
+    finally:
+        Handler.drive_login["running"] = False
+
+
 class Server(ThreadingHTTPServer):
     # Windows'ta SO_REUSEADDR, portu kullanan başka bir uygulama varken de bağlanmaya izin
     # veriyor ve istekler o uygulamaya gidiyor; orada kapalı tutup çakışmayı hata olarak gösteriyoruz.
     allow_reuse_address = not sys.platform.startswith("win")
 
 
+def _already_running(port: int) -> bool:
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/status", timeout=2) as r:
+            return json.load(r).get("ok") is True
+    except Exception:
+        return False
+
+
+def _log_to_file() -> None:
+    """pythonw ile (konsolsuz) çalışırken çıktıları ~/.clipfarm/server.log dosyasına yazar."""
+    log = youtube.HOME / "server.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    if log.exists() and log.stat().st_size > 5 * 1024 * 1024:
+        log.replace(log.with_suffix(".log.1"))
+    stream = log.open("a", encoding="utf-8", buffering=1)
+    sys.stdout = sys.stderr = stream
+
+
+def _keep_ytdlp_fresh() -> None:
+    while True:
+        updater.update_in_background()
+        time.sleep(6 * 3600)
+
+
 def serve(port: int = DEFAULT_PORT) -> None:
+    from .winproc import hide_console_windows
+
+    if sys.stdout is None or sys.stderr is None:
+        _log_to_file()
+    logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format="%(asctime)s %(message)s")
+    hide_console_windows()
+    if _already_running(port):
+        print(f"Clipfarm zaten çalışıyor: http://127.0.0.1:{port}")
+        return
     Handler.worker = Worker()
-    Handler.dl_worker = Worker()
     Handler.store = downloads.Store()
+    Handler.manager = downloads.Manager(Handler.store)
     try:
         httpd = Server(("127.0.0.1", port), Handler)
     except OSError as exc:
@@ -251,7 +349,8 @@ def serve(port: int = DEFAULT_PORT) -> None:
             "O uygulamayı kapatın ya da `clipfarm serve --port <başka port>` kullanın "
             "(eklentideki extension/shared.js dosyasındaki adresi de değiştirin)."
         )
-    print(f"Clipfarm paneli: http://127.0.0.1:{port}  (durdurmak için Ctrl+C)")
+    threading.Thread(target=_keep_ytdlp_fresh, daemon=True).start()
+    print(f"{time.strftime('%Y-%m-%d %H:%M:%S')} Clipfarm paneli: http://127.0.0.1:{port}  (durdurmak için Ctrl+C)")
     print(f"İndirilenler: {downloads.DOWNLOAD_DIR}")
     print(f"Claude: {'açık' if editor.available() else 'kapalı (ANTHROPIC_API_KEY yok)'} · "
           f"YouTube: {'bağlı' if youtube.is_connected() else 'bağlı değil'}")
